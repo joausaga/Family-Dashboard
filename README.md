@@ -79,10 +79,7 @@ cd android
 ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew :app:testDebugUnitTest :app:assembleRelease
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
-
-La release utiliza `com.joausaga.familydashboard` y una firma propia configurada fuera del repositorio en `~/.android/family-dashboard-release.properties`. Respalda de forma privada ese archivo y `~/.android/family-dashboard-release.p12`: son necesarios para futuras actualizaciones. **No cambiar la firma ni el paquete `com.joausaga.familydashboard`**: son parte de la identidad de instalación y de la autorización OAuth. No instalar una APK debug encima de producción ni desinstalar para resolver un conflicto de firmas: se perderían datos locales.
-
-La instalación anterior `com.lito.planify.dashboard` tenía otra firma y almacenamiento independiente. La [migración autorizada](SPECS/android-identity/SPEC.md) se validó el 2 Nov 2026 con OAuth nuevo, restauración, persistencia y reexportación; después se desinstaló esa app con autorización. Se conservan su APK, firma, cliente OAuth y copias como recuperación, y no se transfieren tokens. Evidencia en [sus tareas](SPECS/android-identity/TASKS.md).
+**No cambiar la firma ni el paquete `com.joausaga.familydashboard`**: son parte de la identidad de instalación y de la autorización OAuth. 
 
 Consulta [Instalación en Amazon Fire](docs/SETUP.md) antes de instalar y [Google/OAuth](GOOGLE_CLOUD_SETUP.md) antes de configurar credenciales.
 
