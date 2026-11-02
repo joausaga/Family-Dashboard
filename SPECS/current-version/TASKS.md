@@ -21,6 +21,14 @@
 - [x] Comparar nombre, applicationId y certificado del APK con la release previa — `aapt` confirma Family Dashboard y `com.lito.planify.dashboard`; `apksigner` verifica firma válida y SHA-256 del certificado idéntico.
 - [x] Con autorización expresa, actualizar la Fire HD 8 con `adb install -r` y revisar Inicio, TV y Contenido — Resultado: sin desinstalar ni cerrar sesión; mismos eventos/tarea y selección (2 de 5 calendarios y 1 de 2 listas), TV conserva 8 h 23 min del día y los periodos previos. Horario activo y brillo automático siguen indicados. No se cambió ningún control. Capturas de verificación con datos privados se mantienen fuera del repositorio; `docs/images/today.png` se actualizó con Inicio.
 
+## Previsiones blancas por la tarde (FR-11)
+
+- [x] Confirmar texto/iconos blancos entre 12:00 y 21:00 y autorización para oscurecer solo las mini-tarjetas; no cambiar el resto de la cabecera.
+- [x] Aplicar la excepción después de resolver la paleta original, ajustando opacidad de azul oscuro hasta contraste ≥4,5:1; reloj, fecha y clima actual no cambian.
+- [x] Probar límites 11:59/12:00/18:00/20:59/21:00, todos los minutos y conservación del degradado general — `OverviewColorsTest`, incluyendo contraste de todas las superficies durante los 1440 minutos.
+- [x] Ejecutar `testDebugUnitTest assembleRelease` — **135 pruebas, 0 fallos; BUILD SUCCESSFUL**. Verificados mismo applicationId y certificado. Actualización en sitio autorizada e instalada en Fire HD 8 sin cambiar reloj ni ajustes.
+- [x] Revisar visualmente las cinco previsiones tras actualizar a las 18:13: días, iconos, temperaturas y lluvia blancos sobre azul oscuro; resto de Inicio conservado. Captura renovada en `docs/images/today.png`. La comparativa `overview-times.png` conserva evidencia anterior del degradado general; la apariencia de sus mini-tarjetas queda sustituida por este cambio.
+
 ## Pendientes ajenos a la limpieza
 
 La mejora posterior de zona horaria TV está especificada y verificada en [tv-weather-timezone](../tv-weather-timezone/TASKS.md): usa la ubicación meteorológica, recalcula sin alterar registros y conserva compatibilidad con preferencias/caché antiguas. Su ejecución de pruebas es posterior a los resultados de la limpieza registrados arriba.

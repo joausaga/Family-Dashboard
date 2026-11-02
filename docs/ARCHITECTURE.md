@@ -53,7 +53,7 @@ Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/das
 
 Geometría basada en 1920 × 1200, escala hasta 1 según lados largo/corto. En 1280 × 800 resulta 0,667; el texto usa `fontScale` mínimo de 1,35 cuando se reduce la geometría. La Fire emplea banderas inmersivas legacy; las versiones recientes usan controladores de insets.
 
-La identidad visual usa crema/azul y tokens de `ui/theme/Theme.kt`. Geist es la tipografía principal; Geist Mono sigue en Tiempo y el reloj nocturno. La cabecera de Inicio interpola colores según hora local y selecciona contenido por contraste, incluyendo celdas con blanco al 20%.
+La identidad visual usa crema/azul y tokens de `ui/theme/Theme.kt`. Geist es la tipografía principal; Geist Mono sigue en Tiempo y el reloj nocturno. La cabecera de Inicio interpola colores según hora local y selecciona contenido por contraste. Las cinco previsiones fuerzan texto/iconos blancos entre 12:00 y 21:00 sobre azul oscuro de opacidad ajustada para contraste ≥4,5:1; fuera de ese horario conservan contenido adaptativo sobre blanco al 20%. El ajuste de las celdas no altera degradado, reloj, fecha ni clima actual.
 
 El modo nocturno reduce el brillo de ventana a `1/255`. Las alarmas conservan alternativas para API 22. La instalación documentada no es Device Owner; las políticas de quiosco solo actúan si se aprovisionan por separado. El botón de retorno y el servicio opcional de apagado se conservan por sus referencias activas.
 

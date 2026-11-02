@@ -13,7 +13,8 @@ class OverviewColorsTest {
 
     @Test fun morningMatchesReferenceAndNightIsStable() {
         assertEquals(Color(0xFF91C8FA), at(7).start)
-        assertEquals(at(7), at(12))
+        assertEquals(at(7).start, at(12).start)
+        assertEquals(at(7).end, at(12).end)
         assertEquals(at(21), at(0))
         assertEquals(at(0), at(6))
         assertEquals(at(0), at(23, 59))
@@ -45,5 +46,36 @@ class OverviewColorsTest {
                 assertTrue("Forecast at $minute", overviewContrast(colors.forecastContent, colors.forecastSurface.compositeOver(background)) >= 4.5f)
             }
         }
+    }
+
+    @Test fun forecastIsWhiteFromNoonInclusiveUntilNinePmExclusive() {
+        assertTrue(!at(11, 59).whiteForecast)
+        for (minute in 720 until 1260) {
+            val colors = overviewColors(LocalTime.ofSecondOfDay(minute * 60L))
+            assertEquals("White forecast at $minute", Color.White, colors.forecastContent)
+            assertTrue(colors.whiteForecast)
+        }
+        assertTrue(!at(21).whiteForecast)
+        assertTrue(!at(0).whiteForecast)
+        assertTrue(at(18).whiteForecast)
+        assertTrue(at(20, 59).whiteForecast)
+    }
+
+    @Test fun forecastExceptionDoesNotChangeHeaderOrMorningAndNightCells() {
+        for (minute in 0 until 1440) {
+            val colors = overviewColors(LocalTime.ofSecondOfDay(minute * 60L))
+            val original = colors.copy(whiteForecast = false)
+            assertEquals(original.content, colors.content)
+            if (minute !in 720 until 1260) {
+                assertEquals(Color.White.copy(alpha = 0.20f), colors.forecastSurface)
+                assertEquals(original.forecastContent, colors.forecastContent)
+            } else {
+                for (background in listOf(colors.start, colors.end)) {
+                    assertTrue(colors.forecastSurface.compositeOver(background).luminance() < background.luminance())
+                }
+            }
+        }
+        assertEquals(Color(0xFF91C8FA), at(12).start)
+        assertEquals(Color(0xFFDEEEFF), at(12).end)
     }
 }

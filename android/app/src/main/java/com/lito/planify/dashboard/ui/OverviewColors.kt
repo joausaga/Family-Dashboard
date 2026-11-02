@@ -6,10 +6,21 @@ import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.luminance
 import java.time.LocalTime
 
-internal data class OverviewColors(val start: Color, val end: Color) {
+internal data class OverviewColors(val start: Color, val end: Color, val whiteForecast: Boolean = false) {
     val content: Color get() = overviewContent(start, end)
-    val forecastSurface: Color get() = Color.White.copy(alpha = 0.20f)
-    val forecastContent: Color get() = overviewContent(forecastSurface.compositeOver(start), forecastSurface.compositeOver(end))
+    val forecastSurface: Color
+        get() {
+            if (!whiteForecast) return Color.White.copy(alpha = 0.20f)
+            // Keep a visible blue cell; darken only as much as white text needs.
+            return (18..100).asSequence().map { opacity ->
+                Color(0xFF182542).copy(alpha = opacity / 100f)
+            }.first { surface ->
+                minOf(overviewContrast(Color.White, surface.compositeOver(start)),
+                    overviewContrast(Color.White, surface.compositeOver(end))) >= 4.5f
+            }
+        }
+    val forecastContent: Color get() = if (whiteForecast) Color.White
+        else overviewContent(forecastSurface.compositeOver(start), forecastSurface.compositeOver(end))
 }
 
 private val OverviewInk = Color(0xFF020408)
@@ -30,6 +41,7 @@ private fun lerp(from: Color, to: Color, fraction: Float): Color {
 /** Local wall-clock time only: works offline and without a weather response. */
 internal fun overviewColors(time: LocalTime): OverviewColors {
     val minute = time.hour * 60 + time.minute + time.second / 60f
+    val whiteForecast = time.hour in 12..20
     fun between(from: OverviewColors, to: OverviewColors, start: Int, end: Int): OverviewColors {
         val fraction = (minute - start) / (end - start)
         // Keep the gradient narrow around the foreground change, so both ends remain legible.
@@ -60,10 +72,10 @@ internal fun overviewColors(time: LocalTime): OverviewColors {
             overviewContrast(safe.forecastContent, safe.forecastSurface.compositeOver(safe.start)),
             overviewContrast(safe.forecastContent, safe.forecastSurface.compositeOver(safe.end))
         )
-        if (minOf(contentContrast, forecastContrast) >= 4.5f) return safe
+        if (minOf(contentContrast, forecastContrast) >= 4.5f) return safe.copy(whiteForecast = whiteForecast)
         safe = OverviewColors(lerp(safe.start, center, 0.25f), lerp(safe.end, center, 0.25f))
     }
-    return OverviewColors(center, center)
+    return OverviewColors(center, center, whiteForecast = whiteForecast)
 }
 
 internal fun overviewContrast(a: Color, b: Color): Float =

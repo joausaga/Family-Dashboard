@@ -16,7 +16,7 @@ Adaptación de Planify Dashboard para Amazon Fire. Se conserva el paquete Java/K
 | Inicio de consulta | Cinco días con eventos/recurrentes integrados, Tareas protagonista y tendencia TV |
 | Recurrentes verdes, otros del calendario | Barra y tinte al 16%; textos oscuros y cápsula de cuenta regresiva con contraste adaptativo |
 | Paleta por hora local | `OverviewColors.kt`: mañana `#91C8FA → #DEEEFF`, tarde `#354F7E → #526895`, noche `#182542 → #30385F`; transición RGB lineal y contenido casi negro/blanco |
-| Contraste durante transición | Se reduce la amplitud del degradado si sus extremos no permiten 4,5:1; celdas de previsión eligen su contenido sobre blanco al 20% |
+| Contraste durante transición | Se reduce la amplitud del degradado si sus extremos no permiten 4,5:1; después de resolver ese fondo, las cinco previsiones fuerzan blanco entre 12:00 y 21:00 con una superficie azul oscura de opacidad ajustada hasta alcanzar ≥4,5:1 en ambos extremos. Fuera del rango mantienen contenido adaptativo sobre blanco al 20%. La excepción no participa en la elección del degradado, para conservar reloj, fecha y clima actual |
 | Tareas con reglas compartidas | `TaskUi.kt` y `TaskSections.kt`; orden, filtros, vencimientos e iconos comunes a Inicio/Tareas |
 | TV local e historial independiente de Google | `TvLocalUsageRepository`; conserva registros importados y campos de metadatos aunque se retire el importador |
 | Zona TV de la ubicación del tiempo | `WeatherTimeZone.kt`, campos opcionales de zona/coordenadas, recálculo al cambiar ubicación y `ZonedDateTime` compartido para agregados/presentación; fallback al dispositivo, sin migrar registros |
