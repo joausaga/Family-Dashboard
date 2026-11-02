@@ -5,6 +5,7 @@ import com.lito.planify.dashboard.data.Forecast
 import com.lito.planify.dashboard.data.Location
 import com.lito.planify.dashboard.data.bodyOrThrow
 import com.lito.planify.dashboard.data.withDailyFromHourly
+import com.lito.planify.dashboard.data.belongsTo
 import com.lito.planify.dashboard.data.cache.Cached
 import com.lito.planify.dashboard.data.cache.CachedResource
 import com.lito.planify.dashboard.data.cache.DiskCache
@@ -16,10 +17,14 @@ class WeatherRepository(private val api: Api, cache: DiskCache) {
 
     val forecast: StateFlow<Cached<Forecast>?> = resource.data
 
-    fun isStale() = resource.isStale()
+    fun isStale(location: Location? = null) = resource.isStale() ||
+        (location != null && resource.data.value?.value?.belongsTo(location) == false)
 
     suspend fun refresh(location: Location): Result<Forecast> = resource.refresh {
-        api.forecast(Api.forecastUrl(location)).bodyOrThrow().withDailyFromHourly()
+        api.forecast(Api.forecastUrl(location)).bodyOrThrow().withDailyFromHourly().copy(
+            locationLatitude = location.latitude,
+            locationLongitude = location.longitude
+        )
     }
 
     /** Al cambiar de ubicación: la previsión anterior ya no sirve. */

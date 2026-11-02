@@ -565,7 +565,7 @@ private fun shortTv(ms: Long): String {
 @Composable
 private fun TvUsageCard(state: UiState, modifier: Modifier, onGoToSettings: () -> Unit) {
     val tv = state.tvUsage
-    val today = state.now.toLocalDate()
+    val today = state.tvTime.toLocalDate()
     val days = remember(today, tv.dayTotals) { tvUsageLastFiveCompletedDays(today, tv.dayTotals).reversed() }
     val average = remember(today, tv.dayTotals) { tvUsageAverageLastFiveCompletedDays(today, tv.dayTotals) }
     val statusColor = when (tv.status) {

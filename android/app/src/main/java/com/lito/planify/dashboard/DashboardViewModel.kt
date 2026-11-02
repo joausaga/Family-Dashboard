@@ -24,6 +24,10 @@ import com.lito.planify.dashboard.data.Schedule
 import com.lito.planify.dashboard.data.Store
 import com.lito.planify.dashboard.data.TvUsageCalculator
 import com.lito.planify.dashboard.data.TvUsageView
+import com.lito.planify.dashboard.data.TvUsageHistory
+import com.lito.planify.dashboard.data.belongsTo
+import com.lito.planify.dashboard.data.tvTimeAt
+import com.lito.planify.dashboard.data.withForecastTimeZone
 import com.lito.planify.dashboard.data.TvDisplayStatus
 import com.lito.planify.dashboard.data.TvMonitorSettings
 import com.lito.planify.dashboard.data.TvLocalApi
@@ -94,6 +98,9 @@ data class UiState(
     val contentFetchedAt: Long? = null,
     val forecastFetchedAt: Long? = null
 ) {
+    /** Fecha y hora TV en la zona de la ubicación meteorológica; no cambia el reloj general. */
+    val tvTime: java.time.ZonedDateTime get() = tvTimeAt(now, location, forecast)
+
     /** Reloj nocturno: fuera de horario (salvo mientras se mira el dashboard un momento) o pedido con la luna. */
     val night: Boolean
         get() = clockValid && token != null && (
@@ -122,7 +129,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 now = time.now,
                 clockValid = time.valid,
                 content = contentRepository.content.value?.value,
-                forecast = weatherRepository.forecast.value?.value,
+                forecast = weatherRepository.forecast.value?.value?.takeIf { it.belongsTo(store.location) },
                 weeks = calendarRepository.weeks.value,
                 location = store.location,
                 schedule = store.schedule,
@@ -165,14 +172,20 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 applyFilters()
             }
         }
-        viewModelScope.launch { weatherRepository.forecast.collect { f -> _state.update { it.copy(forecast = f?.value, forecastFetchedAt = f?.fetchedAt) } } }
+        viewModelScope.launch {
+            weatherRepository.forecast.collect { f ->
+                // Una petición anterior puede terminar después de elegir otra ubicación.
+                if (f != null && !f.value.belongsTo(_state.value.location)) return@collect
+                val location = _state.value.location?.withForecastTimeZone(f?.value)
+                if (location != _state.value.location) store.location = location
+                _state.update {
+                    withTvHistory(it.copy(location = location, forecast = f?.value, forecastFetchedAt = f?.fetchedAt))
+                }
+            }
+        }
         viewModelScope.launch {
             tvUsageRepository.history.collect { entry ->
-                val current = _state.value.now.atZone(ZoneId.systemDefault()).toInstant()
-                val configured = _state.value.tvMonitorSettings.isConfigured
-                val view = entry?.value?.let { history -> TvUsageCalculator.summarize(history, current, ZoneId.of("America/Asuncion")) }
-                    ?: TvUsageView()
-                _state.update { it.copy(tvUsage = if (configured) view else view.copy(status = TvDisplayStatus.NOT_CONFIGURED, currentSessionMillis = null)) }
+                _state.update { withTvHistory(it, entry?.value) }
             }
         }
         viewModelScope.launch {
@@ -220,7 +233,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 activeCalendarWeek?.let { monday ->
                     if (calendarRepository.isStale(monday, intervalAge)) refreshCalendarWeek(monday)
                 }
-                if (weatherRepository.isStale()) refreshWeather()
+                if (weatherRepository.isStale(_state.value.location)) refreshWeather()
             }
             val settings = _state.value.tvMonitorSettings
             if (_state.value.clockValid && settings.isConfigured) {
@@ -238,13 +251,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun tick() {
         val time = clock.current()
-        val current = time.now.atZone(ZoneId.systemDefault()).toInstant()
-        val view = tvUsageRepository.history.value?.value?.let {
-            TvUsageCalculator.summarize(it, current, ZoneId.of("America/Asuncion"))
-        } ?: TvUsageView()
-        val tv = if (_state.value.tvMonitorSettings.isConfigured) view
-            else view.copy(status = TvDisplayStatus.NOT_CONFIGURED, currentSessionMillis = null)
-        _state.update { it.copy(now = time.now, clockValid = time.valid, tvUsage = tv) }
+        _state.update { withTvHistory(it.copy(now = time.now, clockValid = time.valid)) }
+    }
+
+    private fun withTvHistory(state: UiState, history: TvUsageHistory? = tvUsageRepository.history.value?.value): UiState {
+        val time = state.tvTime
+        val view = history?.let { TvUsageCalculator.summarize(it, time.toInstant(), time.zone) } ?: TvUsageView()
+        return state.copy(tvUsage = if (state.tvMonitorSettings.isConfigured) view
+            else view.copy(status = TvDisplayStatus.NOT_CONFIGURED, currentSessionMillis = null))
     }
 
     /** Fuerza la sincronización (al recuperar la red, tras iniciar sesión...). */
@@ -597,11 +611,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             name = result.name,
             detail = listOfNotNull(result.admin1, result.country).joinToString(", "),
             latitude = result.latitude,
-            longitude = result.longitude
+            longitude = result.longitude,
+            timezone = result.timezone
         )
         store.location = location
+        _state.update {
+            withTvHistory(it.copy(location = location, forecast = null, forecastFetchedAt = null, geoResults = emptyList()))
+        }
         weatherRepository.clear()
-        _state.update { it.copy(location = location, geoResults = emptyList()) }
         viewModelScope.launch { refreshWeather() }
     }
 

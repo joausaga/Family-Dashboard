@@ -119,7 +119,7 @@ val SQL_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd H
 
 // --- Open-Meteo ---
 
-data class Location(val name: String, val detail: String, val latitude: Double, val longitude: Double)
+data class Location(val name: String, val detail: String, val latitude: Double, val longitude: Double, val timezone: String? = null)
 
 data class GeoResponse(val results: List<GeoResult>? = null)
 
@@ -128,13 +128,18 @@ data class GeoResult(
     val latitude: Double,
     val longitude: Double,
     val country: String? = null,
-    val admin1: String? = null
+    val admin1: String? = null,
+    val timezone: String? = null
 )
 
 data class Forecast(
     val current: Current,
     val hourly: Hourly,
-    val daily: Daily
+    val daily: Daily,
+    val timezone: String? = null,
+    /** Coordenadas solicitadas: vinculan la caché con la ubicación, no con la celda redondeada del proveedor. */
+    val locationLatitude: Double? = null,
+    val locationLongitude: Double? = null
 )
 
 /**

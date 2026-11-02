@@ -23,6 +23,8 @@
 
 ## Pendientes ajenos a la limpieza
 
+La mejora posterior de zona horaria TV está especificada y verificada en [tv-weather-timezone](../tv-weather-timezone/TASKS.md): usa la ubicación meteorológica, recalcula sin alterar registros y conserva compatibilidad con preferencias/caché antiguas. Su ejecución de pruebas es posterior a los resultados de la limpieza registrados arriba.
+
 - [ ] **AC-08:** legibilidad a 2–3 m y manejo de esfera horaria con el dedo, a cargo de la persona usuaria.
 - [ ] Selecciones Google: comprobar aislamiento/persistencia con una segunda cuenta, listas vacías/nuevas, selección vacía, scroll largo y reintento tras fallo de carga. No cambiar de cuenta en esta limpieza.
 - [ ] Tareas: comprobar varias listas reales, expansión y desplazamiento horizontal con cuatro o más listas; los datos reales de la revisión anterior eran limitados.

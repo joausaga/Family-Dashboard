@@ -93,13 +93,14 @@ Consulta [Instalación en Amazon Fire](docs/SETUP.md) antes de instalar y [Googl
 | [Especificación vigente](SPECS/current-version/SPEC.md) | Comportamiento actual, sin diseños intermedios sustituidos |
 | [Diseño vigente](SPECS/current-version/DESIGN.md) | Decisiones e invariantes de compatibilidad |
 | [Validación](SPECS/current-version/TASKS.md) | Evidencia y verificaciones pendientes |
+| [Zona horaria de TV](SPECS/tv-weather-timezone/SPEC.md) | Zona de la ubicación meteorológica, recálculo histórico y fallback |
 
 ## Límites importantes
 
 - La referencia probada es la Fire HD 8 indicada; no se garantiza compatibilidad con todos los modelos Amazon Fire.
 - La instalación de referencia usa pantalla completa, **no Device Owner**. El código opcional de quiosco se conserva, pero no implica que el bloqueo estricto esté activado.
 - El sondeo de TV funciona mientras la app está activa. Una falta de respuesta se registra como apagado **inferido**, no como confirmación física.
-- El historial TV se calcula en `America/Asuncion`. Calendario y fondo horario usan la hora local del dispositivo.
+- TV usa la zona horaria de la ubicación elegida para el tiempo, también para fechas, horas y comparaciones. Al cambiarla, se recalcula todo el historial sin alterar sus registros. Si la zona aún no se conoce, usa provisionalmente la del dispositivo; la zona conocida se guarda para uso sin conexión. Calendario y fondo horario siguen usando la hora local del dispositivo.
 - La caché conserva la última descarga; no equivale a disponer de Google sin autorización. Un arranque sin token puede requerir recuperar la autorización con Play Services.
 - La legibilidad a 2–3 m y el manejo de la esfera horaria con el dedo siguen pendientes de validación por la persona usuaria.
 

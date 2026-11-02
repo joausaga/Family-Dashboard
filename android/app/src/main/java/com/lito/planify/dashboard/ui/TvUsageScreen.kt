@@ -65,9 +65,8 @@ import com.lito.planify.dashboard.ui.theme.Palette
 import com.lito.planify.dashboard.ui.theme.Radius
 import com.lito.planify.dashboard.ui.theme.Type
 import java.time.LocalDate
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.time.YearMonth
-import java.time.ZoneId
 import java.time.format.TextStyle
 
 private const val HOUR_MILLIS = 3_600_000L
@@ -75,7 +74,7 @@ private val WEEK_RANGES = listOf(4, 8, 26)
 private const val DEFAULT_WEEKS = 8
 
 @Composable
-fun TvUsageScreen(usage: TvUsageView, now: LocalDateTime, onGoToSettings: () -> Unit) {
+fun TvUsageScreen(usage: TvUsageView, now: ZonedDateTime, onGoToSettings: () -> Unit) {
     val today = now.toLocalDate()
     var weeks by remember { mutableIntStateOf(DEFAULT_WEEKS) }
     ScreenPadding {
@@ -130,12 +129,12 @@ private fun TvCardTitle(title: String, trailing: @Composable () -> Unit = {}) {
 }
 
 @Composable
-private fun TvHero(usage: TvUsageView, now: LocalDateTime, onGoToSettings: () -> Unit, modifier: Modifier) {
+private fun TvHero(usage: TvUsageView, now: ZonedDateTime, onGoToSettings: () -> Unit, modifier: Modifier) {
     val on = usage.status == TvDisplayStatus.ON
     val gradient = if (on) listOf(Palette.TelevisionDeep, Palette.TelevisionBright) else listOf(Palette.TelevisionDim, Palette.TelevisionDimEnd)
     val today = now.toLocalDate()
     val average = remember(today, usage.dayTotals) { tvUsageAverageLastFiveCompletedDays(today, usage.dayTotals) }
-    val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val nowMillis = now.toInstant().toEpochMilli()
     val white = Color.White
     Column(
         modifier.clip(RoundedCornerShape(Radius.Card)).background(Brush.verticalGradient(gradient)).padding(32.dp),

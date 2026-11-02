@@ -14,6 +14,7 @@ Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/das
 | `data/repository/GoogleWorkspaceRepository.kt` | Paginación, conversión de eventos, recurrentes y tareas |
 | `ContentRepository.kt`, `CalendarRepository.kt` en `data/repository/` | Contenido y semanas con caché, caducidad configurable y conservación ante fallos |
 | `data/Api.kt`, `data/repository/WeatherRepository.kt` | Open-Meteo y geocodificación, sin autenticación Planify |
+| `data/WeatherTimeZone.kt` | Zona de la ubicación meteorológica, validación, compatibilidad y hora TV en el mismo instante |
 | `data/cache/` | JSON privado, escrituras atómicas y publicación de la última copia válida |
 | `data/Store.kt`, `data/ReferenceClock.kt` | Preferencias compatibles y hora de referencia |
 | `data/TvLocalApi.kt`, `data/repository/TvLocalUsageRepository.kt`, `data/TvUsage.kt` | Observaciones locales, historial persistente y agregados de TV |
@@ -44,6 +45,7 @@ Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/das
 - `files/cache`: claves existentes `content`, `week-<lunes>`, `forecast` y `tv_usage_history`. No se renombran en la limpieza.
 - Los modelos `Event`, `Task`, `Person`, `Content`, `Week`, `Schedule` e historial TV mantienen los campos necesarios para leer datos existentes. `persons` aún tiene consumidores en Calendario, aunque Google no lo rellene.
 - `sourceRowCounts` y `sourceOrders` del historial TV conservan metadatos importados anteriormente; el sondeo local los copia al persistir. No hay cliente activo de Sheets/Drive ni importador remoto.
+- `Location` conserva opcionalmente su zona IANA; geocodificación y pronóstico leen `timezone`. La caché de pronóstico guarda las coordenadas solicitadas para no aplicar una respuesta antigua a otra ubicación. JSON antiguo sin estos campos sigue siendo válido; se utiliza la zona del dispositivo hasta conocer la zona meteorológica.
 - Las preferencias antiguas de sesión y su limpieza se conservan por compatibilidad. Los access tokens activos solo viven en memoria.
 - `ReferenceClock` conserva la última hora válida. Sin hora válida no se consultan rangos remotos y el reloj no presenta una hora falsa.
 
@@ -59,7 +61,11 @@ El modo nocturno reduce el brillo de ventana a `1/255`. Las alarmas conservan al
 
 Consulta GET de solo lectura a `http://<IP>:8001/api/v2/` en la LAN. Respuesta válida confirma el estado según el contrato Samsung; error o timeout registra OFF inferido. Observaciones repetidas no duplican transiciones. La primera observación local no atribuye tiempo anterior desconocido y conserva intervalos importados.
 
-Los totales se reparten por fronteras de hora/día/mes en `America/Asuncion`; no se asumen días de 24 horas. Estado antiguo tras 6 horas sin observación se considera desactualizado. Inicio resume el apagado como «Apagada»; la pantalla TV añade el aviso de inferencia cuando corresponde. No se cambia este comportamiento durante la limpieza.
+Los totales se reparten por fronteras de hora/día/mes en la zona de la ubicación meteorológica, sin asumir días de 24 horas. Se prefiere la zona del pronóstico vinculado a esas coordenadas, después la guardada para la ubicación y finalmente la del dispositivo. Al cambiar ubicación/zona, reloj o historial, el ViewModel recalcula sin reescribir transiciones ni intervalos.
+
+`UiState.tvTime` conserva zona e instante como `ZonedDateTime`; Inicio usa su fecha para tendencia/promedio y la pantalla TV lo usa para «hoy», meses, comparaciones, hora actual y antigüedad de consulta. No se reinterpreta esa hora como si fuera la del dispositivo. El reloj general y Google Calendar conservan su zona anterior. Detalle en [zona horaria de TV](../SPECS/tv-weather-timezone/SPEC.md).
+
+Estado antiguo tras 6 horas sin observación se considera desactualizado. Inicio resume el apagado como «Apagada»; la pantalla TV añade el aviso de inferencia cuando corresponde.
 
 ## Pruebas
 

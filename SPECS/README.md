@@ -2,6 +2,8 @@
 
 La fuente de verdad de **Family Dashboard para Amazon Fire** es [current-version/SPEC.md](current-version/SPEC.md), con su [diseño](current-version/DESIGN.md) y [validación](current-version/TASKS.md). Consolida las reglas actuales; los diseños intermedios sustituidos se retiraron con autorización para no mantener instrucciones contradictorias. Se reconoce la base de Planify en el [README](../README.md).
 
+Trabajos posteriores: [zona horaria TV de la ubicación meteorológica](tv-weather-timezone/SPEC.md), con [diseño](tv-weather-timezone/DESIGN.md) y [validación](tv-weather-timezone/TASKS.md). La especificación consolidada recoge también la regla vigente.
+
 Este directorio contiene las especificaciones que guían la implementación de funcionalidades nuevas y adaptaciones de funciones existentes mediante **Spec-Driven Development (SDD)**. Cada trabajo tiene su propio subdirectorio y mantiene juntos requisitos, diseño y tareas de implementación.
 
 ## Estructura

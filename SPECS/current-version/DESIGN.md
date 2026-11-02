@@ -19,6 +19,7 @@ Adaptación de Planify Dashboard para Amazon Fire. Se conserva el paquete Java/K
 | Contraste durante transición | Se reduce la amplitud del degradado si sus extremos no permiten 4,5:1; celdas de previsión eligen su contenido sobre blanco al 20% |
 | Tareas con reglas compartidas | `TaskUi.kt` y `TaskSections.kt`; orden, filtros, vencimientos e iconos comunes a Inicio/Tareas |
 | TV local e historial independiente de Google | `TvLocalUsageRepository`; conserva registros importados y campos de metadatos aunque se retire el importador |
+| Zona TV de la ubicación del tiempo | `WeatherTimeZone.kt`, campos opcionales de zona/coordenadas, recálculo al cambiar ubicación y `ZonedDateTime` compartido para agregados/presentación; fallback al dispositivo, sin migrar registros |
 | Apagado TV inferido | Modelo conserva certeza; Inicio resume «Apagada» y pantalla TV explica falta de respuesta |
 | Ajustes índice/detalle | `SettingsScreen`, `SettingsSections`, `SettingsComponents`, `SettingsLogic`, `SettingsTimePicker` |
 | Diálogos dentro de Compose | Conservan densidad propia de la app; esfera Material vertical 1,7× y formato 12 h con AM/PM |

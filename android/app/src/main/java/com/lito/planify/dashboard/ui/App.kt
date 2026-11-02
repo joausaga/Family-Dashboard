@@ -131,7 +131,7 @@ fun DashboardApp(
                     Page.Calendar -> CalendarScreen(state, onLoadWeek)
                     Page.Weather -> WeatherScreen(state)
                     Page.Tasks -> TasksScreen(state)
-                    Page.Tv -> TvUsageScreen(state.tvUsage, state.now) { page = Page.Settings }
+                    Page.Tv -> TvUsageScreen(state.tvUsage, state.tvTime) { page = Page.Settings }
                     Page.Settings -> SettingsScreen(state, actions, settings)
                 }
             }

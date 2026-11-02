@@ -52,7 +52,7 @@ La Fire de referencia oculta barras de estado/navegación con la ruta legacy de 
 
 El reloj nocturno muestra hora, fecha y clima con brillo mínimo. Tocar permite consultar el panel durante cinco minutos fuera del horario. El apagado completo mediante `lockNow()` requiere Device Owner; sin él puede no estar disponible. La infraestructura opcional de quiosco, retorno desde Ajustes y servicio de apagado sigue en el código, pero no se activa por instalar la APK.
 
-El sondeo TV y la sincronización dependen de que la app esté activa; no son servicios independientes de monitorización continua. Los informes TV usan `America/Asuncion`.
+El sondeo TV y la sincronización dependen de que la app esté activa; no son servicios independientes de monitorización continua. Los informes TV usan la zona horaria de la ubicación seleccionada para el tiempo. Cambiar esa ubicación recalcula el historial completo, pero no modifica sus registros originales. La zona conocida se conserva sin conexión; si aún no hay una válida se utiliza provisionalmente la del dispositivo. No se cambia la zona de Android ni la del calendario Google.
 
 ## Diagnóstico y recuperación
 
