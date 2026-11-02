@@ -4,6 +4,10 @@ La fuente de verdad de **Family Dashboard para Amazon Fire** es [current-version
 
 Trabajos posteriores: [zona horaria TV de la ubicación meteorológica](tv-weather-timezone/SPEC.md), con [diseño](tv-weather-timezone/DESIGN.md) y [validación](tv-weather-timezone/TASKS.md). La especificación consolidada recoge también la regla vigente.
 
+[Copia y restauración selectiva](backup-restore/SPEC.md): [diseño](backup-restore/DESIGN.md) y [validación](backup-restore/TASKS.md), primera etapa sin cambio de paquete/firma.
+
+[Identidad Android propia y migración](android-identity/SPEC.md): [diseño](android-identity/DESIGN.md) y [validación](android-identity/TASKS.md), etapa posterior autorizada con instalación en paralelo, restauración de ambos bloques y retirada final de la app anterior; se conservan APK, firma, cliente y copias.
+
 Este directorio contiene las especificaciones que guían la implementación de funcionalidades nuevas y adaptaciones de funciones existentes mediante **Spec-Driven Development (SDD)**. Cada trabajo tiene su propio subdirectorio y mantiene juntos requisitos, diseño y tareas de implementación.
 
 ## Estructura

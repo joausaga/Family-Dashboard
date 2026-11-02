@@ -10,3 +10,8 @@ scripts/config.local
 # Datos locales antiguos: nunca incluirlos en Git.
 .demo/
 .DS_Store
+# Signing material must remain outside the repository, even if copied here accidentally.
+*.jks
+*.keystore
+*.p12
+*-release.properties

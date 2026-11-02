@@ -2,7 +2,7 @@
 
 ## Procedencia y organización
 
-Adaptación de Planify Dashboard para Amazon Fire. Se conserva el paquete Java/Kotlin y Android `com.lito.planify.dashboard`; el nombre visible es Family Dashboard. El [documento de arquitectura](../../docs/ARCHITECTURE.md) detalla componentes, fuentes y persistencia; [SPEC.md](SPEC.md) contiene los requisitos consolidados.
+Adaptación de Planify Dashboard para Amazon Fire. El paquete Java/Kotlin y Android nuevo es `com.joausaga.familydashboard`; el nombre visible sigue siendo Family Dashboard. La app anterior `com.lito.planify.dashboard` se desinstaló tras validar la migración; se conservan su APK, firma, cliente OAuth y copias como recuperación. El [documento de arquitectura](../../docs/ARCHITECTURE.md) detalla componentes, fuentes y persistencia; [SPEC.md](SPEC.md) contiene los requisitos consolidados.
 
 ## Decisiones que se conservan
 
@@ -23,7 +23,8 @@ Adaptación de Planify Dashboard para Amazon Fire. Se conserva el paquete Java/K
 | Apagado TV inferido | Modelo conserva certeza; Inicio resume «Apagada» y pantalla TV explica falta de respuesta |
 | Ajustes índice/detalle | `SettingsScreen`, `SettingsSections`, `SettingsComponents`, `SettingsLogic`, `SettingsTimePicker` |
 | Diálogos dentro de Compose | Conservan densidad propia de la app; esfera Material vertical 1,7× y formato 12 h con AM/PM |
-| Misma identidad de instalación | `applicationId`, namespace, firma, versión, claves y preferencias sin cambios |
+| Identidad propia autorizada | Nuevo applicationId/namespace/paquetes y firma, instalación independiente; preferencias/modelos y versión conservados, migración SAF con antigua app intacta según [android-identity](../android-identity/DESIGN.md) |
+| Copia portable y restauración selectiva | `data/backup/`, SAF y `SettingsBackup`; lista blanca sin credenciales, verificación SHA-256/relectura y diario privado de rollback; primera etapa sin cambiar identidad |
 | Conservar lo tangencialmente usado | `Person`/`PersonInitials`, Geist Mono, código de quiosco, servicio de apagado, campos heredados y funciones con pruebas permanecen |
 
 ## Limpieza autorizada
@@ -36,6 +37,6 @@ Los instaladores, demo y documentación específica del XORO ya no son instrucci
 
 ## Verificación y recuperación
 
-Antes de publicar o instalar: pruebas unitarias, release, comprobación del nombre/paquete/certificado, enlaces locales y ausencia de símbolos retirados. La instalación de referencia se actualiza con `adb install -r`, nunca mediante desinstalación. No se escribe en datos privados de la app ni se fuerza una nueva autorización para la prueba de nombre.
+Antes de publicar o instalar: pruebas unitarias, release, comprobación del nombre/paquete/certificado, enlaces locales y ausencia de símbolos retirados. La migración inicial instala la nueva app en paralelo y requiere nueva autorización Google y restauración explícita; no escribe en los datos privados de la anterior. Después, las actualizaciones de la nueva identidad usan `adb install -r` con su misma firma, nunca desinstalación.
 
-Una recuperación requiere una APK anterior compatible y de la misma firma; no se promete downgrade ni se usan resets de Git para descartar trabajo previo. La verificación manual a distancia y el Branding externo de OAuth se registran aparte; no se marcan resueltos por compilar.
+Durante la migración se conservan app, APK, clave y cliente antiguos como recuperación; la nueva app no hereda su autorización ni almacenamiento. Para recuperar actualizaciones de una identidad se necesita una APK compatible y de su misma firma; no se promete downgrade ni se usan resets de Git. La validación real de OAuth/restauración y la verificación manual a distancia se registran aparte; no se marcan resueltas por compilar.

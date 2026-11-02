@@ -29,7 +29,13 @@
 - [x] Ejecutar `testDebugUnitTest assembleRelease` — **135 pruebas, 0 fallos; BUILD SUCCESSFUL**. Verificados mismo applicationId y certificado. Actualización en sitio autorizada e instalada en Fire HD 8 sin cambiar reloj ni ajustes.
 - [x] Revisar visualmente las cinco previsiones tras actualizar a las 18:13: días, iconos, temperaturas y lluvia blancos sobre azul oscuro; resto de Inicio conservado. Captura renovada en `docs/images/today.png`. La comparativa `overview-times.png` conserva evidencia anterior del degradado general; la apariencia de sus mini-tarjetas queda sustituida por este cambio.
 
-## Pendientes ajenos a la limpieza
+## Etapas posteriores: copias e identidad propia
+
+- [x] Copias: implementación y 159 pruebas correctas; release con identidad antigua instalada en sitio, exportación real verificada y vista previa/confirmación canceladas sin restaurar. Evidencia en [backup-restore](../backup-restore/TASKS.md).
+- [x] Tras autorización posterior, cambiar applicationId/namespace/paquetes a `com.joausaga.familydashboard`, generar firma propia fuera del repositorio y conservar clave/app/cliente anteriores. Release correcta y 159 pruebas; nueva app instalada en paralelo y pantalla de conexión Google comprobada en Fire.
+- [x] Cliente OAuth Android adicional y conexión Google validados; restauración real de historial/configuración, **2 de 5** calendarios, **1 de 2** listas, **8 h 23 min**, persistencia tras reinicio y nueva copia verificada con 39 transiciones originales conservadas. Tras validar, con autorización, se desinstaló la app anterior; se conservan APK, firma, cliente OAuth y copias. Evidencia completa en [android-identity](../android-identity/TASKS.md); sin commit/push.
+
+## Otros pendientes
 
 La mejora posterior de zona horaria TV está especificada y verificada en [tv-weather-timezone](../tv-weather-timezone/TASKS.md): usa la ubicación meteorológica, recalcula sin alterar registros y conserva compatibilidad con preferencias/caché antiguas. Su ejecución de pruebas es posterior a los resultados de la limpieza registrados arriba.
 
@@ -52,5 +58,5 @@ La mejora posterior de zona horaria TV está especificada y verificada en [tv-we
 | AC-04 | Pruebas de Tareas, TV, Settings y ScreenSchedule; captura del panel |
 | AC-05 | `TvLocalUsageRepositoryTest`, historial del dispositivo tras actualización |
 | AC-06 | Búsqueda de símbolos y verificación de enlaces/documentos |
-| AC-07 | Build release y actualización firmada en sitio |
+| AC-07 | Build release; instalación inicial en paralelo según android-identity y futuras actualizaciones del nuevo paquete con su misma firma |
 | AC-08 | Confirmación futura de la persona usuaria |

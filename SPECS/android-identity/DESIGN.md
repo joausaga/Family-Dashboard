@@ -1,0 +1,9 @@
+# Diseño de migración de identidad
+
+1. Preservar la APK antigua y comprobar la copia exportada; no tocar datos privados de la instalación existente hasta validar OAuth, restauración y reexportación.
+2. Refactorización mecánica de fuentes/pruebas y rutas a `com/joausaga/familydashboard`, applicationId/namespace y reglas de modelos R8. No cambiar esquema de preferencias/cache/JSON ni identificador lógico `family-dashboard-backup`.
+3. Nuevo almacén PKCS12 RSA 3072/SHA256withRSA, alias `family-dashboard`, validez 10000 días; configuración `~/.android/family-dashboard-release.properties` y almacén `~/.android/family-dashboard-release.p12`. Contraseña aleatoria compartida para almacén/entrada PKCS12, nunca en argumentos o salida. Creación exclusiva y permisos 0600.
+4. Gradle usa únicamente la nueva configuración para release, no cae en firma anterior ni debug. Release sin configuración no se considera instalable de producción.
+5. SAF de la app nueva abre el archivo creado por la anterior: el permiso se concede de nuevo mediante selector. Google se conecta antes porque Ajustes está tras login; cliente Android adicional con nuevo paquete/SHA-1, sin client secret en APK.
+6. Instalar en paralelo y validar con acciones dirigidas al nuevo componente. No usar HOME, cambiar predeterminados ni aprovisionar administración. Restaurar ambos bloques mediante UI; contrastar exportación posterior de la nueva app con la copia fuente y reiniciar solo la nueva app para comprobar persistencia.
+7. Tras validar, la retirada de la app anterior se consulta por separado y se ejecuta solo con autorización; se conservan APK, firma, cliente OAuth y copias como recuperación. La desactivación de receptores o un cambio de launcher siguen siendo decisiones aparte. Datos Google y estado TV actual pueden evolucionar al sincronizar; comprobar conservación de registros históricos, no igualdad de fechas de sondeo.

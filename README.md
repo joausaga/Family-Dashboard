@@ -12,6 +12,7 @@ Conserva la base nativa Kotlin/Jetpack Compose, Open-Meteo, el calendario semana
 - **Tareas:** resumen, línea temporal de 14 días, vistas por fecha/lista, filtros y detalles expandibles.
 - **TV:** sondeo de la API local Samsung/Tizen, sesiones, uso horario, mapa de calor y comparaciones por periodo.
 - **Ajustes:** calendarios y listas visibles, horario con reloj de 12 horas y AM/PM, brillo, ubicación meteorológica, frecuencias de actualización, prueba de conexión de TV y cuenta Google.
+- **Copia de seguridad:** exportación JSON y restauración selectiva de historial TV, configuración o ambos, desde Ajustes → Dispositivo; sin tokens ni credenciales.
 - **Reloj nocturno:** hora, fecha y clima sobre negro, con brillo mínimo. Tocar permite consultar el panel temporalmente.
 
 Google se consulta con permisos de **solo lectura**: no se crean, editan ni completan eventos o tareas. La interfaz táctil permite navegar, filtrar y configurar; la agenda de Inicio no edita datos. La acción «Configurar TV» abre Ajustes.
@@ -54,7 +55,7 @@ Consulta el [flujo SDD y sus plantillas](SPECS/README.md). La base vigente está
 
 1. **Pregunta ante cualquier duda.** No elijas por tu cuenta qué eliminar, cambiar de comportamiento o sustituir. Explica el alcance y pide confirmación si no está claro.
 2. **Leer no autoriza a escribir en la tablet.** Instalar, cambiar ajustes del sistema, permisos, cuentas, Device Owner o autorización Google requiere permiso explícito para esa acción. Una autorización anterior no se extiende automáticamente a otras operaciones.
-3. **Protege la identidad de instalación.** No cambies `applicationId`, namespace, certificado, almacén de claves ni credenciales OAuth. Family Dashboard es el nombre visible; `com.lito.planify.dashboard` sigue siendo el paquete técnico.
+3. **Protege la identidad de instalación.** La identidad nueva autorizada es `com.joausaga.familydashboard`, con firma propia. No vuelvas a cambiar paquete, namespace, certificado, almacén ni OAuth sin autorización. La instalación anterior `com.lito.planify.dashboard` se retiró de la tablet tras validar la migración; se conservan su APK, firma, cliente OAuth y copias como recuperación. No puede actualizarse con la nueva APK.
 4. **No borres datos para resolver un problema.** No desinstales, ejecutes `pm clear`, cierres sesión ni retires cuentas sin autorización específica. Ante un conflicto de firmas, detente y revisa el APK; no fuerces una reinstalación destructiva. Antes de una operación con riesgo, acuerda cómo conservar los datos y recuperarse.
 5. **Conserva lo que aún se usa.** Comprueba llamadas, pruebas, referencias indirectas y compatibilidad de datos antes de retirar código. Que Google no rellene un campo o que una función no se vea en Inicio no demuestra que sobre. No renombres claves ni elimines campos persistidos sin revisar migración y recuperación.
 6. **Respeta el trabajo existente.** No reviertas cambios ajenos ni uses resets destructivos. Haz cambios acotados, explica su verificación y no hagas commit ni push salvo petición expresa.
@@ -65,7 +66,7 @@ Consulta el [flujo SDD y sus plantillas](SPECS/README.md). La base vigente está
 ### Verificación y entrega
 
 - Ejecuta las [pruebas y compilación pertinentes](#compilar-y-actualizar); informa exactamente qué comprobaste y qué quedó pendiente.
-- Antes de una actualización autorizada, verifica nombre, paquete y certificado del APK contra la instalación existente. Usa `adb install -r` con la misma firma, sin desinstalar.
+- Antes de una actualización autorizada, verifica nombre, paquete y certificado del APK contra la instalación correspondiente. Usa `adb install -r` solo con la misma identidad/firma; la migración inicial al nuevo paquete es una instalación independiente.
 - Tras actualizar, comprueba que siguen la cuenta, las selecciones, los ajustes y el historial TV. No cierres sesión ni cambies controles solo para completar una comprobación sin permiso.
 - La publicación del sitio y los cambios de Google Cloud, DNS o Branding son operaciones externas separadas: modificar archivos locales no las realiza ni las autoriza.
 
@@ -79,7 +80,9 @@ ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew :app:testDebugUnitTest :app:a
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-La release utiliza la firma de producción existente, configurada fuera del repositorio. **No cambiar la firma ni el paquete `com.lito.planify.dashboard`**: son parte de la identidad de instalación y de la autorización OAuth. No instalar una APK debug encima de producción ni desinstalar para resolver un conflicto de firmas: se perderían datos locales.
+La release utiliza `com.joausaga.familydashboard` y una firma propia configurada fuera del repositorio en `~/.android/family-dashboard-release.properties`. Respalda de forma privada ese archivo y `~/.android/family-dashboard-release.p12`: son necesarios para futuras actualizaciones. **No cambiar la firma ni el paquete `com.joausaga.familydashboard`**: son parte de la identidad de instalación y de la autorización OAuth. No instalar una APK debug encima de producción ni desinstalar para resolver un conflicto de firmas: se perderían datos locales.
+
+La instalación anterior `com.lito.planify.dashboard` tenía otra firma y almacenamiento independiente. La [migración autorizada](SPECS/android-identity/SPEC.md) se validó el 2 Nov 2026 con OAuth nuevo, restauración, persistencia y reexportación; después se desinstaló esa app con autorización. Se conservan su APK, firma, cliente OAuth y copias como recuperación, y no se transfieren tokens. Evidencia en [sus tareas](SPECS/android-identity/TASKS.md).
 
 Consulta [Instalación en Amazon Fire](docs/SETUP.md) antes de instalar y [Google/OAuth](GOOGLE_CLOUD_SETUP.md) antes de configurar credenciales.
 
@@ -94,6 +97,21 @@ Consulta [Instalación en Amazon Fire](docs/SETUP.md) antes de instalar y [Googl
 | [Diseño vigente](SPECS/current-version/DESIGN.md) | Decisiones e invariantes de compatibilidad |
 | [Validación](SPECS/current-version/TASKS.md) | Evidencia y verificaciones pendientes |
 | [Zona horaria de TV](SPECS/tv-weather-timezone/SPEC.md) | Zona de la ubicación meteorológica, recálculo histórico y fallback |
+| [Copia de seguridad](SPECS/backup-restore/SPEC.md) | Formato portable, restauración selectiva y protección de los datos existentes |
+| [Identidad Android propia](SPECS/android-identity/SPEC.md) | Nuevo paquete/firma, migración validada y retirada posterior de la instalación anterior |
+
+## Copias de seguridad
+
+En **Ajustes → Dispositivo → Copia de seguridad**:
+
+1. **Exportar copia:** acepta el aviso de privacidad y elige destino en el selector de Android. Incluye historial TV, ubicación/zona meteorológica, horario, brillo, IP/frecuencia TV, frecuencia Google y selecciones por cuenta. El archivo se relee antes de anunciar «exportada y verificada».
+2. **Importar copia:** elige un JSON válido, revisa fecha/contenido y selecciona historial, configuración o ambos. Nada viene seleccionado. Una segunda confirmación reemplaza solo los bloques elegidos; no mezcla historiales ni cierra sesión Google.
+
+El JSON **no está cifrado**: contiene datos privados y no debe publicarse ni añadirse a Git. No incluye tokens, credenciales, estado de autorización, Wi-Fi ni cachés de eventos/tareas/clima. El formato versionado no depende del paquete instalado. SHA-256 detecta corrupción, no autenticidad: importa solo copias de confianza. Tamaño máximo 32 MiB, sin truncar registros.
+
+Cancelar o abrir una vista previa no restaura nada. Una aplicación interrumpida se revierte mediante un diario privado antes de reanudar el sondeo; si la recuperación falla, la app la muestra como pendiente. El proveedor de archivos elegido controla el almacenamiento del JSON y puede ser local o remoto. Si la exportación no puede verificarse, no utilices ese archivo como copia válida.
+
+Exportar/importar no cambia paquete ni firma. La [migración a la identidad propia](SPECS/android-identity/SPEC.md) se completó por separado; la app anterior ya se desinstaló y se conservan su APK, firma, cliente y copias como recuperación. En una instalación nueva, conecta Google para acceder a Ajustes; la autorización no se importa.
 
 ## Límites importantes
 
@@ -110,4 +128,4 @@ Family Dashboard es una adaptación, no un reemplazo oficial de Planify ni una a
 
 - Fuentes **Geist y Geist Mono**: [licencia OFL](licenses/Geist-OFL.txt). Ambas siguen en uso.
 - Iconos meteorológicos **Meteocons**, de Bas Milius: [licencia y procedencia](third_party/meteocons/). El generador activo es `scripts/meteocons.py`.
-- El icono heredado se conserva; el nombre visible es **Family Dashboard**. Los nombres internos de paquete, firma y credenciales no se renombran.
+- El icono heredado se conserva; el nombre visible es **Family Dashboard**. La identidad técnica vigente es `com.joausaga.familydashboard` con firma propia; las credenciales OAuth no se incorporan al repositorio.

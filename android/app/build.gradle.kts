@@ -6,7 +6,7 @@ plugins {
 }
 
 // Production signing material is stored locally outside the repository and is not committed.
-val productionSigningPropertiesFile = File(System.getProperty("user.home"), ".android/planify-family-dashboard-release.properties")
+val productionSigningPropertiesFile = File(System.getProperty("user.home"), ".android/family-dashboard-release.properties")
 val productionSigningProperties = Properties().apply {
     if (productionSigningPropertiesFile.isFile) {
         productionSigningPropertiesFile.inputStream().use { load(it) }
@@ -14,11 +14,11 @@ val productionSigningProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.lito.planify.dashboard"
+    namespace = "com.joausaga.familydashboard"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.lito.planify.dashboard"
+        applicationId = "com.joausaga.familydashboard"
         minSdk = 22 // Fire OS 5.1
         targetSdk = 37
         versionCode = 1

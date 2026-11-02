@@ -1,7 +1,7 @@
 # Family Dashboard — versión actual para Amazon Fire
 
 - **Estado:** `implemented`
-- **Tipo:** consolidación de la versión vigente y limpieza sin cambio funcional
+- **Tipo:** versión vigente; incluye copias y migración autorizada a identidad Android propia
 - **Última actualización:** 2026-11-02
 
 ## Propósito y alcance
@@ -10,11 +10,11 @@ Family Dashboard adapta [Planify Dashboard](https://github.com/eusonlito/Planify
 
 Este documento consolida las reglas vigentes de selección de calendarios/listas, frecuencia de actualización, Inicio, Tareas, TV, Ajustes y autorización. No conserva diseños intermedios sustituidos: calendario mensual en Inicio, card separada de rutinas, reloj de paletas, barras de horario, importación remota TV o gráficos TV anteriores. El historial Git de los archivos rastreados sigue disponible; esta consolidación no modifica commits existentes.
 
-No incluye rebranding del icono, cambios en Google Cloud/DNS, migración de datos, cambio de paquete/firma, activación de Device Owner ni eliminación de componentes con consumidores tangenciales.
+No incluye rebranding del icono, cambios de DNS/Branding, activación de Device Owner ni eliminación de componentes con consumidores tangenciales. La etapa posterior autorizada cambió paquete/firma y migró mediante copia, preservando la instalación anterior durante la validación; después se retiró con autorización. El cliente OAuth adicional requirió intervención de la persona usuaria. Estado real en [identidad Android](../android-identity/TASKS.md).
 
 ## Identidad, plataforma y fuentes
 
-- **FR-01:** El nombre visible es **Family Dashboard** en Android, login y sitio informativo. README y documentación explican que es una adaptación de Planify para Amazon Fire y mantienen créditos/licencias. Paquete, namespace, firma, credenciales y claves persistidas no cambian.
+- **FR-01:** El nombre visible es **Family Dashboard** en Android, login y sitio informativo; se conservan créditos/licencias de Planify y terceros. Nueva identidad autorizada: `com.joausaga.familydashboard` en applicationId, namespace y paquetes, con firma propia fuera del repositorio. Claves/modelos persistidos y formato de copia no cambian. La instalación anterior se retiró tras validar la migración con autorización; se conservan su APK, firma, cliente OAuth y copias como recuperación. Migración y validación según [android-identity](../android-identity/SPEC.md).
 - **FR-02:** Compatibilidad de referencia API 22/Fire OS con geometría escalada desde 1920 × 1200 y tipografía independiente; pantalla completa legacy, alternativas de alarmas y superposición para API antigua. No se garantiza toda la familia Amazon Fire.
 - **FR-03:** Autorización Google de solo lectura (`calendar.readonly`, `tasks.readonly`) mediante Play Services. Token solo en memoria, renovación al arrancar o recibir 401 sin borrar caché, y revocación intentada al cerrar sesión. Sin login Planify ni backend propio.
 - **FR-04:** Calendar y Tasks usan paginación. Calendar incluye calendarios ocultos, expande recurrentes, omite cancelados, aplica zona local y conserva fin cuando existe. Las ocurrencias con `recurringEventId` son rutinas. Tasks excluye completadas, conserva lista y vencimiento; tareas sin título útil no se muestran.
@@ -57,23 +57,24 @@ No incluye rebranding del icono, cambios en Google Cloud/DNS, migración de dato
 - **FR-29:** Pantalla: horario activable por días laborables/fin de semana, explicación de reloj nocturno, dos botones Enciende/Apaga, esfera Material 3 vertical ampliada 1,7×, 12 horas y AM/PM. Horas/minutos escalonados con campo activo oscuro/blanco e inactivo transparente/gris; Cancelar no guarda y Aceptar valida ≥15 min. Sin barras de horario. Brillo mantiene deslizador de 5–100% por pasos de 5 y control Automático; al desactivarlo recupera el valor manual recordado en la pantalla.
 - **FR-30:** Servicios: ubicación con campo y Buscar alineados y estados de búsqueda; frecuencia Google guardada al seleccionar; TV con IP, sondeo, Probar conexión y Guardar en la misma fila. Prueba exige IP válida, no escribe historial y muestra resultado debajo. Guardado visible temporalmente y errores claros.
 - **FR-31:** Dispositivo: cuenta Google y correo obtenido del ID del calendario principal, con estados de carga/no disponible; antigüedad de sincronización por servicio; Wi-Fi con detalles; acciones Wi-Fi, Ajustes de Android y Cerrar sesión. Confirmación propia de cierre con explicación, Cancelar y acción destructiva, sin cierre al tocar fuera. No ofrece la antigua acción de apagar/reiniciar.
+- **FR-34:** Dispositivo incluye «Copia de seguridad»: exportación JSON sin contraseña mediante selector Android y restauración selectiva de historial TV/configuración/ambos, con vista previa y confirmación de reemplazo. No exporta/importa autorización Google ni modifica identidad. Validación completa, verificación de archivo escrito y recuperación transaccional según [backup-restore](../backup-restore/SPEC.md).
 
 ## Limpieza y compatibilidad
 
 - **FR-32:** Retirar componentes sin llamadas y ramas antiguas autorizadas: reloj de paletas, texto animado, login/backend Planify, importación Sheets/Drive y sus pruebas exclusivas. Trasladar pruebas útiles de repositorios a Google. Conservar código activo, consumidores indirectos, modelos persistidos, campos heredados, fuentes, Meteocons e infraestructura opcional Android.
-- **FR-33:** Documentación actual en README, docs y esta especificación. Retirar documentación/instaladores del XORO y diseños sustituidos, preservando reconocimiento de Planify y licencias. No modificar Google Cloud, DNS, `CNAME`, firma ni configuración externa al renombrar. No hacer commit sin petición.
+- **FR-33:** Documentación actual en README, docs y esta especificación. Retirar documentación/instaladores del XORO y diseños sustituidos, preservando reconocimiento de Planify y licencias. No modificar DNS, `CNAME`, Branding ni publicar sin permiso. Cambios de identidad y cliente OAuth solo en el alcance autorizado de [android-identity](../android-identity/SPEC.md); sin commit/push hasta nueva petición.
 
 ## Criterios de aceptación
 
 | ID | Verificación |
 |---|---|
-| AC-01 | Nombre Family Dashboard en APK/login/sitio; paquete y certificado iguales a la release anterior; créditos/licencias presentes. |
+| AC-01 | Nombre Family Dashboard en APK/login/sitio; nueva identidad/firma según android-identity, créditos/licencias presentes; app anterior preservada durante la migración y retirada después con autorización. |
 | AC-02 | Pruebas de APIs Google, filtros por cuenta, caché, 401, reinicio y limpieza pasan sin una API Planify. |
 | AC-03 | Las pruebas de paleta comprueban 1440 minutos, horarios y contraste; captura comparativa 09/15/18/21 disponible. |
 | AC-04 | Tareas, TV y Ajustes conservan funciones y valores; pruebas de lógica, horarios y formatos pasan. |
 | AC-05 | Historial importado TV y metadatos sobreviven reinicio y sondeo local; datos/cache del dispositivo no se borran. |
 | AC-06 | No quedan llamadas ni definiciones del backend/importador retirados; referencias documentales locales resuelven y no describen como vigente el hardware original. |
-| AC-07 | Release compila y se verifica en Fire por actualización en sitio, sin desinstalar ni cambiar identidad. |
+| AC-07 | Release compila y se verifica en Fire: migración inicial en paralelo según android-identity; actualizaciones posteriores del nuevo paquete con su misma firma, sin desinstalar. |
 | AC-08 | La persona usuaria comprueba legibilidad a 2–3 m y manejo con el dedo del selector horario; no se da por validado mediante captura. |
 
 ## Límites conocidos

@@ -1,10 +1,10 @@
 # Arquitectura de Family Dashboard
 
-Family Dashboard adapta la base Kotlin/Jetpack Compose de [Planify Dashboard](https://github.com/eusonlito/Planify-Dashboard) para Amazon Fire. El código y la identidad Android mantienen `com.lito.planify.dashboard` para conservar actualizaciones y OAuth.
+Family Dashboard adapta la base Kotlin/Jetpack Compose de [Planify Dashboard](https://github.com/eusonlito/Planify-Dashboard) para Amazon Fire. El código y la nueva identidad Android usan `com.joausaga.familydashboard`, con firma propia. La migración desde `com.lito.planify.dashboard` es una instalación independiente con restauración explícita, no una actualización en sitio.
 
 ## Componentes activos
 
-Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/dashboard/`:
+Las rutas siguientes están bajo `android/app/src/main/java/com/joausaga/familydashboard/`:
 
 | Componente | Responsabilidad |
 |---|---|
@@ -16,6 +16,7 @@ Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/das
 | `data/Api.kt`, `data/repository/WeatherRepository.kt` | Open-Meteo y geocodificación, sin autenticación Planify |
 | `data/WeatherTimeZone.kt` | Zona de la ubicación meteorológica, validación, compatibilidad y hora TV en el mismo instante |
 | `data/cache/` | JSON privado, escrituras atómicas y publicación de la última copia válida |
+| `data/backup/`, `ui/SettingsBackup.kt` | Formato portable, documentos SAF, validación, restauración selectiva y diario de recuperación |
 | `data/Store.kt`, `data/ReferenceClock.kt` | Preferencias compatibles y hora de referencia |
 | `data/TvLocalApi.kt`, `data/repository/TvLocalUsageRepository.kt`, `data/TvUsage.kt` | Observaciones locales, historial persistente y agregados de TV |
 | `ui/App.kt` | Navegación, indicador de conexión y regreso a Inicio tras 120 s sin interacción |
@@ -49,6 +50,8 @@ Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/das
 - Las preferencias antiguas de sesión y su limpieza se conservan por compatibilidad. Los access tokens activos solo viven en memoria.
 - `ReferenceClock` conserva la última hora válida. Sin hora válida no se consultan rangos remotos y el reloj no presenta una hora falsa.
 
+El cambio de paquete no modifica claves ni modelos persistidos, pero Android aísla los directorios por aplicación: la copia SAF v1 transfiere solo los bloques autorizados. Google se autoriza de nuevo con un cliente Android para el nuevo paquete/SHA-1. Tras validar, la app anterior se desinstaló con autorización; su APK, clave, cliente OAuth y copias se conservan como recuperación. Detalle y estado de validación en [identidad Android](../SPECS/android-identity/SPEC.md).
+
 ## Presentación y hardware
 
 Geometría basada en 1920 × 1200, escala hasta 1 según lados largo/corto. En 1280 × 800 resulta 0,667; el texto usa `fontScale` mínimo de 1,35 cuando se reduce la geometría. La Fire emplea banderas inmersivas legacy; las versiones recientes usan controladores de insets.
@@ -67,7 +70,17 @@ Los totales se reparten por fronteras de hora/día/mes en la zona de la ubicaci�
 
 Estado antiguo tras 6 horas sin observación se considera desactualizado. Inicio resume el apagado como «Apagada»; la pantalla TV añade el aviso de inferencia cuando corresponde.
 
-## Pruebas
+## Copias y restauración
+
+`BackupPreferences` aplica una lista blanca, no un volcado de SharedPreferences: excluye token, email de sesión, `google_connected`, última hora válida, diario y claves ajenas. Las selecciones mantienen claves por cuenta; su identificador puede revelar la cuenta al decodificarlo, por lo que la copia es privada.
+
+`BackupCodec` limita lectura a 32 MiB, exige campos/tipos, valida formato/versión, rangos y coherencia de transiciones/intervalos y verifica SHA-256 antes de la vista previa. No es cifrado ni firma de autenticidad. `BackupOperations` separa lectura/vista previa/confirmación de aplicación y verifica la exportación por relectura; `AndroidBackupDocuments` usa exclusivamente URI elegidas con Storage Access Framework, sin permisos generales de almacenamiento ni URI persistentes.
+
+`BackupTransaction` guarda configuración/historial anteriores en `backup_restore_journal` privado y confirmado antes de escribir; solo modifica bloques seleccionados. El diario se elimina después de persistir ambos; ante fallo revierte y al arrancar recupera antes de construir repositorios. No vacía preferencias ni cambia autorización Google. Si no puede recuperar, la app bloquea operaciones normales y ofrece reintentar.
+
+El ViewModel comparte mutex entre copia/aplicación y sondeo TV, invalida respuestas de selección anteriores, recarga historial/configuración, filtra por cuenta, reprograma horario e invalida pronóstico si cambia ubicación. El proceso no reanuda consentimiento OAuth ni crea otra identidad Android. No se fuerza una nueva consulta TV al confirmar, para que la copia restaurada pueda revisarse antes del siguiente sondeo normal.
+
+## Pruebas automáticas
 
 ```sh
 cd android
