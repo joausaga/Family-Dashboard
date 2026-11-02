@@ -1,22 +1,13 @@
 package com.lito.planify.dashboard.data.repository
 
-import com.lito.planify.dashboard.data.Api
-import com.lito.planify.dashboard.data.AuthRequest
-import com.lito.planify.dashboard.data.Event
-import com.lito.planify.dashboard.data.Forecast
-import com.lito.planify.dashboard.data.GeoResponse
-import com.lito.planify.dashboard.data.Task
-import com.lito.planify.dashboard.data.UserResponse
 import com.lito.planify.dashboard.data.cache.DiskCache
 import com.lito.planify.dashboard.data.isUnauthorized
 import kotlinx.coroutines.runBlocking
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import retrofit2.Response
 import java.io.IOException
 import java.time.LocalDate
 
@@ -24,28 +15,11 @@ class CalendarRepositoryTest {
     @get:Rule
     val folder = TemporaryFolder()
 
-    /** API falsa: devuelve un evento por petición, o falla como se le diga. */
-    private class FakeApi : Api {
-        var failure: Exception? = null
-        var status = 200
-
-        override suspend fun events(auth: String, start: Long, end: Long?, routine: Boolean, timezone: String, dashboard: Boolean): Response<List<Event>> {
-            failure?.let { throw it }
-            if (status != 200) return Response.error(status, "".toResponseBody())
-            return Response.success(listOf(Event(1, 1, "Casa", "#000000", if (routine) "Rutina" else "Evento", "2026-10-14 10:00:00")))
-        }
-
-        override suspend fun auth(request: AuthRequest): Response<UserResponse> = error("no se usa")
-        override suspend fun tasks(auth: String, dashboard: Boolean): Response<List<Task>> = error("no se usa")
-        override suspend fun forecast(url: String): Response<Forecast> = error("no se usa")
-        override suspend fun geocode(url: String): Response<GeoResponse> = error("no se usa")
-    }
-
-    private val api = FakeApi()
+    private val api = FakeGoogleSource()
     private var clock = 1_000_000L
     private val monday = LocalDate.of(2026, 10, 12)
 
-    private fun repository() = CalendarRepository(api, DiskCache(folder.root), now = { clock })
+    private fun repository() = CalendarRepository(api.repository, DiskCache(folder.root), now = { clock })
 
     @Test
     fun downloadedWeekIsAvailableAfterRestart() = runBlocking {
@@ -64,6 +38,16 @@ class CalendarRepositoryTest {
         api.failure = IOException("sin red")
         assertTrue(repository.refresh("token", monday).isFailure)
         assertEquals(1, repository.weeks.value[monday]?.events?.size)
+    }
+
+    @Test
+    fun calendarWeekUsesSelectedMaxAge() = runBlocking {
+        val repository = repository()
+        repository.refresh("token", monday)
+        clock += 6 * 60_000L
+
+        assertTrue(repository.isStale(monday, 5 * 60_000L))
+        assertTrue(!repository.isStale(monday, 10 * 60_000L))
     }
 
     @Test

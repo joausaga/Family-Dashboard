@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Política de privacidad — Planify Dashboard</title>
+  <title>Política de privacidad — Family Dashboard</title>
   <style>
     :root { color-scheme: light; font: 17px/1.65 system-ui, sans-serif; color: #24231f; background: #f4f0e7; }
     body { max-width: 800px; margin: 0 auto; padding: 3rem 1.5rem; }
@@ -15,27 +15,30 @@
 </head>
 <body>
   <main>
-    <p><a href="index.html">Planify Dashboard</a></p>
+    <p><a href="index.html">Family Dashboard</a></p>
     <h1>Política de privacidad</h1>
-    <p><strong>Última actualización: 28 de octubre de 2026</strong></p>
-    <p>Esta política describe cómo Planify Dashboard, una aplicación Android de código abierto para uso personal y familiar, accede y trata información al conectar Google Calendar y Google Tasks.</p>
+    <p><strong>Última actualización: 2 de noviembre de 2026</strong></p>
+    <p>Esta política describe cómo Family Dashboard, una adaptación de Planify Dashboard para Amazon Fire y uso personal/familiar, trata información de Google Calendar, Google Tasks, Open-Meteo y la monitorización local de TV.</p>
 
     <h2>Datos de Google que se solicitan</h2>
     <p>Con autorización de la persona usuaria, la aplicación solicita acceso de solo lectura a Google Calendar y Google Tasks. Lee los calendarios y sus eventos dentro del intervalo necesario para mostrar el calendario, los próximos eventos y las rutinas; también lee las listas de tareas y las tareas pendientes. No solicita acceso para crear, editar o borrar esos datos.</p>
 
     <h2>Cómo se usan y comparten</h2>
-    <p>Los datos se usan únicamente para mostrar las funciones del dashboard y para recordar en el dispositivo qué calendarios y listas se muestran. Las solicitudes se envían directamente desde la aplicación a las API de Google. Planify Dashboard no opera un servidor propio que reciba esos datos, no los vende ni los comparte con anunciantes y no los usa para publicidad o para entrenar modelos de inteligencia artificial.</p>
+    <p>Los datos se usan únicamente para mostrar las funciones del dashboard y para recordar en el dispositivo qué calendarios y listas se muestran. Las solicitudes se envían directamente desde la aplicación a las API de Google. Family Dashboard no opera un servidor propio que reciba esos datos, no los vende ni los comparte con anunciantes y no los usa para publicidad o para entrenar modelos de inteligencia artificial.</p>
     <p>Google procesa las solicitudes conforme a sus propios términos y políticas. La aplicación consulta Open-Meteo para obtener información meteorológica; al buscar o solicitar el pronóstico, se transmite a ese servicio el nombre de la ubicación buscada o las coordenadas de la ubicación seleccionada. El sitio informativo se aloja en GitHub Pages, que puede procesar datos técnicos de acceso conforme a sus políticas.</p>
 
     <h2>Almacenamiento y conservación</h2>
     <p>Los eventos, rutinas, tareas y pronósticos pueden quedar en una caché local privada de la aplicación para mostrar el dashboard con rapidez y permitir su visualización temporal sin conexión. La caché se actualiza al sincronizar y se elimina al cerrar sesión para los datos de Google; Android también la elimina al desinstalar la aplicación o borrar sus datos. La aplicación no guarda el access token de Google en sus preferencias locales: Play Services administra la autorización y la aplicación mantiene el token temporalmente en memoria para realizar solicitudes.</p>
-    <p>Los ajustes de visualización, ubicación y horario se guardan localmente en el dispositivo. Las selecciones de calendarios y listas se asocian localmente al identificador del calendario principal de la cuenta, no al correo electrónico.</p>
+    <p>Los ajustes de visualización, ubicación y horario se guardan localmente. Las selecciones de calendarios y listas se asocian al identificador del calendario principal de la cuenta, que en las cuentas Google suele ser el correo y también se muestra en Ajustes. No se solicita un permiso de perfil adicional.</p>
+    <h2>Monitorización local de TV</h2>
+    <p>Si se configura una IP, la aplicación consulta el estado de una TV Samsung en la red local y guarda observaciones, sesiones y duraciones de uso en su almacenamiento privado. Si la TV no responde, se registra apagado inferido. La IP y el historial no se envían a Google Sheets, Drive ni al backend Planify. No se solicita acceso a esas fuentes.</p>
+    <p>El historial local, incluidos registros importados anteriormente, se conserva sin borrado automático mientras se mantengan los datos de la app. Cerrar sesión Google no borra ese historial, las preferencias de selección por cuenta ni la ubicación meteorológica. Borrar datos o desinstalar desde Android elimina el almacenamiento privado de la aplicación.</p>
 
     <h2>Control de la persona usuaria</h2>
-    <p>La persona usuaria puede retirar el acceso desde los ajustes de su cuenta de Google o cerrar sesión en Planify Dashboard. Al cerrar sesión, la aplicación intenta revocar el token actual y elimina su caché de datos de Google. La revocación también puede gestionarse en <a href="https://myaccount.google.com/permissions">la página de permisos de la cuenta de Google</a>.</p>
+    <p>La persona usuaria puede retirar el acceso desde los ajustes de su cuenta de Google o cerrar sesión en Family Dashboard. Al cerrar sesión, la aplicación intenta revocar el token actual y elimina su caché de datos de Google. La revocación también puede gestionarse en <a href="https://myaccount.google.com/permissions">la página de permisos de la cuenta de Google</a>.</p>
 
     <h2>Seguridad y menores</h2>
-    <p>La información de dashboard se conserva en el almacenamiento privado de la aplicación en el dispositivo. La persona responsable del dispositivo debe proteger su acceso físico. Planify Dashboard no está dirigida a menores para que creen cuentas o proporcionen datos personales por separado.</p>
+    <p>La información de dashboard se conserva en el almacenamiento privado de la aplicación en el dispositivo. La persona responsable del dispositivo debe proteger su acceso físico. Family Dashboard no está dirigida a menores para que creen cuentas o proporcionen datos personales por separado.</p>
 
     <h2>Cambios y contacto</h2>
     <p>Esta política puede actualizarse si cambian las funciones o el tratamiento de datos. Las versiones vigentes se publicarán en esta página. Para consultas sobre privacidad, escribe a <a href="mailto:jorgesaldivar@gmail.com">jorgesaldivar@gmail.com</a>.</p>

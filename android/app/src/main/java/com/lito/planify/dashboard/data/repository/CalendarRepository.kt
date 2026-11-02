@@ -1,23 +1,19 @@
 package com.lito.planify.dashboard.data.repository
 
-import com.lito.planify.dashboard.data.Api
 import com.lito.planify.dashboard.data.Week
-import com.lito.planify.dashboard.data.bodyOrThrow
 import com.lito.planify.dashboard.data.cache.CachedResource
 import com.lito.planify.dashboard.data.cache.DiskCache
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import java.time.LocalDate
-import java.time.ZoneOffset
-import java.util.TimeZone
 
 /**
  * Semanas del calendario (lunes a domingo), cada una con su copia en disco (`week-<lunes>`). Se descargan al
  * navegar hasta ellas y se conservan las [KEEP] vistas más recientemente.
  */
 class CalendarRepository(
-    private val api: Api,
+    private val google: GoogleWorkspaceRepository,
     private val cache: DiskCache,
     private val now: () -> Long = System::currentTimeMillis
 ) {
@@ -32,21 +28,14 @@ class CalendarRepository(
             .forEach { monday -> resource(monday) }
     }
 
-    fun isStale(monday: LocalDate) = resource(monday).isStale()
+    fun isStale(monday: LocalDate, maxAgeMs: Long = MAX_AGE_MS) = resource(monday).isStale(maxAgeMs)
 
     /** Semanas ya cargadas: las que vuelve a pedir el botón de sincronizar. */
     fun loaded(): Set<LocalDate> = _weeks.value.keys
 
     suspend fun refresh(token: String, monday: LocalDate): Result<Week> {
         val result = resource(monday).refresh {
-            val auth = bearer(token)
-            val zone = TimeZone.getDefault().id
-            val start = monday.atStartOfDay().toEpochSecond(ZoneOffset.UTC)
-            val end = monday.plusDays(7).atStartOfDay().toEpochSecond(ZoneOffset.UTC) - 1
-            Week(
-                events = api.events(auth, start, end, routine = false, timezone = zone).bodyOrThrow().sortedBy { it.date_at },
-                sessions = api.events(auth, start, end, routine = true, timezone = zone).bodyOrThrow().sortedBy { it.date_at }
-            )
+            google.week(token, monday)
         }
         result.onSuccess { week ->
             _weeks.update { it + (monday to week) }

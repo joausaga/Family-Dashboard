@@ -27,8 +27,8 @@ class CachedResource<T>(
     private val _data = MutableStateFlow<Cached<T>?>(cache.read(key, type))
     val data: StateFlow<Cached<T>?> = _data
 
-    /** No hay copia, o tiene más de [maxAgeMs]. */
-    fun isStale(): Boolean = _data.value?.let { now() - it.fetchedAt >= maxAgeMs } ?: true
+    /** No hay copia, o tiene más de la edad máxima indicada. */
+    fun isStale(maxAgeMs: Long = this.maxAgeMs): Boolean = _data.value?.let { now() - it.fetchedAt >= maxAgeMs } ?: true
 
     suspend fun refresh(fetch: suspend () -> T): Result<T> = mutex.withLock {
         val value = try {

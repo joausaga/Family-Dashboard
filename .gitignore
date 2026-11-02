@@ -4,10 +4,9 @@ android/build/
 android/app/build/
 android/local.properties
 android/.kotlin/
-# Copia del repositorio de wesbos como referencia (tiene su propio git)
-docs/photo-frame-dashboard/
+# Configuración heredada privada: no publicar aunque ya no participe en la compilación.
 android/planify.properties
 scripts/config.local
-
-# Entorno de demo (scripts/demo.sh)
+# Datos locales antiguos: nunca incluirlos en Git.
 .demo/
+.DS_Store

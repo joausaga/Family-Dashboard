@@ -1,11 +1,15 @@
 package com.lito.planify.dashboard
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,6 +26,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.lito.planify.dashboard.admin.Kiosk
 import com.lito.planify.dashboard.admin.PowerMenuService
 import com.lito.planify.dashboard.admin.ReturnButton
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 import com.lito.planify.dashboard.power.ScreenSchedule
 import com.lito.planify.dashboard.ui.DashboardActions
 import com.lito.planify.dashboard.ui.DashboardApp
@@ -33,12 +40,29 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val viewModel: DashboardViewModel by viewModels()
+    private var authorizationInFlight = false
+    private val authorizationLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        authorizationInFlight = false
+        if (result.resultCode != RESULT_OK || result.data == null) {
+            viewModel.googleAuthorizationFailed("No se completó la autorización de Google")
+            return@registerForActivityResult
+        }
+        runCatching {
+            Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(result.data!!).accessToken
+        }.onSuccess(viewModel::onGoogleAuthorized)
+            .onFailure { viewModel.googleAuthorizationFailed("No se pudo completar la autorización de Google") }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // La alarma de encendido trae la actividad al frente con la pantalla apagada.
-        setShowWhenLocked(true)
-        setTurnScreenOn(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         hideSystemBars()
@@ -52,26 +76,45 @@ class MainActivity : ComponentActivity() {
             },
             openWifi = { openSystemSettings(Settings.ACTION_WIFI_SETTINGS) },
             openSettings = { openSystemSettings(Settings.ACTION_SETTINGS) },
-            powerMenu = { if (!PowerMenuService.open()) Toast.makeText(this, "Falta activar el servicio de apagado (scripts/install.sh)", Toast.LENGTH_LONG).show() }
+            powerMenu = { if (!PowerMenuService.open()) Toast.makeText(this, "Activa el servicio de apagado en los ajustes de accesibilidad de Android", Toast.LENGTH_LONG).show() }
         )
         val settings = SettingsCallbacks(
             onSearch = viewModel::searchLocation,
             onSelectLocation = viewModel::selectLocation,
             onSchedule = viewModel::setSchedule,
             onBrightness = viewModel::setBrightness,
-            onLogout = viewModel::logout
+            onLogout = viewModel::logout,
+            onCalendarVisibilityChange = viewModel::setCalendarVisible,
+            onRefreshCalendarSettings = viewModel::refreshCalendarSettings,
+            onTaskListVisibilityChange = viewModel::setTaskListVisible,
+            onRefreshTaskListSettings = viewModel::refreshTaskListSettings,
+            onSaveTvMonitorSettings = viewModel::saveTvMonitorSettings,
+            onCalendarTaskRefreshInterval = viewModel::setCalendarTaskRefreshMinutes
         )
 
+        val metrics = resources.displayMetrics
+        val uiScale = dashboardDesignScale(metrics.widthPixels, metrics.heightPixels)
+        val systemFontScale = resources.configuration.fontScale
+        // La escala física de texto en la Fire queda cerca del 90 % del tamaño de diseño.
+        val readableFontScale = maxOf(systemFontScale, if (uiScale < 1f) 1.35f else 1f)
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
-            // Se diseña en píxeles nativos del panel (1920×1200): 1 dp = 1 sp = 1 px.
-            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 1f)) {
+            // Escalar la geometría al panel sin aplicar esa misma reducción agresiva al texto.
+            CompositionLocalProvider(LocalDensity provides Density(density = uiScale, fontScale = readableFontScale)) {
                 ProvideIconClock {
-                    DashboardApp(state, actions, viewModel::login, viewModel::loadWeek, viewModel::syncAll, settings, viewModel::peek)
+                DashboardApp(state, actions, ::startGoogleAuthorization, viewModel::loadWeek, viewModel::syncAll, settings, viewModel::peek)
                 }
             }
         }
 
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.state
+                    .map { viewModel.shouldRenewGoogleSession() }
+                    .distinctUntilChanged()
+                    .collect { shouldRenew -> if (shouldRenew) startGoogleAuthorization() }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.run() }
         }
@@ -94,6 +137,39 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         // Si se ha encendido con el botón fuera de horario, programa el apagado de cortesía.
         ScreenSchedule.reschedule(this)
+        // Después del primer consentimiento, Play Services puede emitir un access token nuevo sin volver a pedir
+        // permisos. El token anterior no se persiste porque caduca en aproximadamente una hora.
+        if (viewModel.shouldRenewGoogleSession()) startGoogleAuthorization()
+    }
+
+    private fun startGoogleAuthorization() {
+        if (authorizationInFlight) return
+        authorizationInFlight = true
+        viewModel.beginGoogleLogin()
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(
+                listOf(
+                    Scope("https://www.googleapis.com/auth/calendar.readonly"),
+                    Scope("https://www.googleapis.com/auth/tasks.readonly")
+                )
+            )
+            .build()
+        Identity.getAuthorizationClient(this).authorize(request)
+            .addOnSuccessListener { result ->
+                val pendingIntent = result.pendingIntent
+                if (pendingIntent != null) {
+                    authorizationLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                } else {
+                    authorizationInFlight = false
+                    viewModel.onGoogleAuthorized(result.accessToken)
+                }
+            }
+            .addOnFailureListener {
+                authorizationInFlight = false
+                viewModel.googleAuthorizationFailed(
+                    "No se pudo autorizar Google. Verifica que Play Services esté actualizado y las APIs estén habilitadas."
+                )
+            }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -113,9 +189,31 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun hideSystemBars() {
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.systemBars())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
+        } else {
+            // En Fire OS 5 / Android 5.1 la ruta legacy debe incluir los flags
+            // FULLSCREEN y HIDE_NAVIGATION además de IMMERSIVE_STICKY.
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                )
         }
     }
+}
+
+
+/** Escala proporcional al diseño base y normaliza el orden de los ejes para ambas orientaciones. */
+private fun dashboardDesignScale(widthPx: Int, heightPx: Int): Float {
+    val longEdge = maxOf(widthPx, heightPx)
+    val shortEdge = minOf(widthPx, heightPx)
+    return minOf(longEdge / 1920f, shortEdge / 1200f).coerceAtMost(1f)
 }

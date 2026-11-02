@@ -4,6 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.lito.planify.dashboard.ui.theme.Radius
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +49,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +63,7 @@ enum class Page(val label: String, val icon: ImageVector) {
     Calendar("Calendario", Icons.Outlined.CalendarMonth),
     Weather("Tiempo", Icons.Outlined.Thermostat),
     Tasks("Tareas", Icons.Outlined.Checklist),
+    Tv("TV", Icons.Outlined.Tv),
     Settings("Ajustes", Icons.Outlined.Settings)
 }
 
@@ -73,14 +77,11 @@ class DashboardActions(
 
 private const val IDLE_MILLIS = 120_000L
 
-/** Solape entre las líneas del reloj lateral: deja la distancia entre las cifras en el interlineado (52). */
-private val RAIL_CLOCK_OVERLAP = (-30).dp
-
 @Composable
 fun DashboardApp(
     state: UiState,
     actions: DashboardActions,
-    onLogin: (String, String) -> Unit,
+    onLogin: () -> Unit,
     onLoadWeek: (LocalDate) -> Unit,
     onSync: () -> Unit,
     settings: SettingsCallbacks,
@@ -126,10 +127,11 @@ fun DashboardApp(
             Rail(page, state, onSelect = { page = it }, onSync = onSync, onSleep = actions.sleep)
             Box(Modifier.weight(1f).fillMaxHeight()) {
                 when (page) {
-                    Page.Today -> TodayScreen(state, lastTouch)
+                    Page.Today -> TodayScreen(state, onLoadWeek) { page = Page.Settings }
                     Page.Calendar -> CalendarScreen(state, onLoadWeek)
                     Page.Weather -> WeatherScreen(state)
                     Page.Tasks -> TasksScreen(state)
+                    Page.Tv -> TvUsageScreen(state.tvUsage, state.now) { page = Page.Settings }
                     Page.Settings -> SettingsScreen(state, actions, settings)
                 }
             }
@@ -145,17 +147,38 @@ private fun Rail(current: Page, state: UiState, onSelect: (Page) -> Unit, onSync
             .width(136.dp)
             .fillMaxHeight()
             .background(Palette.Rail)
-            .padding(vertical = 48.dp)
+            .padding(vertical = 32.dp)
     ) {
-        // Todos los botones juntos arriba y el reloj abajo del todo
-        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        // Botones arriba; estado de conexión y sincronización abajo, en todas las pantallas.
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Page.entries.filter { it != Page.Settings }.forEach { page -> RailItem(page.label, page.icon, page == current) { onSelect(page) } }
             SyncItem(state.syncing, onSync)
             RailItem(Page.Settings.label, Page.Settings.icon, current == Page.Settings) { onSelect(Page.Settings) }
-            RailItem("Apagar pantalla", Icons.Outlined.Bedtime, false, onClick = onSleep)
+            RailItem("Apagar pantalla", Icons.Outlined.Bedtime, false, caption = "Apagar", onClick = onSleep)
         }
         Spacer(Modifier.weight(1f))
-        RailClock(state)
+        RailStatus(state)
+    }
+}
+
+/** Estado de conexión y sincronización: punto de color y texto corto. */
+@Composable
+private fun RailStatus(state: UiState) {
+    val (color, text) = when {
+        !state.connected -> Palette.Accent to "Sin conexión"
+        state.syncError -> Palette.Accent to "Error de sync"
+        state.syncing -> Palette.Warm to "Sincroniza"
+        else -> Palette.Online to "Conectado"
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 8.dp)) {
+        Box(Modifier.size(16.dp).background(color, CircleShape))
+        Text(
+            text,
+            modifier = Modifier.padding(top = 8.dp),
+            style = Type.Tiny.copy(color = Palette.InkSoft, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
     }
 }
 
@@ -173,47 +196,43 @@ private fun SyncItem(syncing: Boolean, onSync: () -> Unit) {
         // Hacia la izquierda, como indica la flecha del icono
         while (true) withFrameMillis { angle = -((it - start) % 1000L) * 0.36f }
     }
-    RailItem("Sincronizar", Icons.Outlined.Sync, syncing, rotation = angle) { onSync() }
+    RailItem("Sincronizar", Icons.Outlined.Sync, syncing, rotation = angle, caption = "Sincronizar") { onSync() }
 }
 
-/** Botón de la barra lateral: solo el icono (el nombre queda como descripción de accesibilidad). */
+/** Botón de la barra lateral: icono con etiqueta corta, relleno al seleccionar y respuesta visual al pulsar. */
 @Composable
-private fun RailItem(label: String, icon: ImageVector, selected: Boolean, rotation: Float = 0f, onClick: () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
+private fun RailItem(label: String, icon: ImageVector, selected: Boolean, rotation: Float = 0f, caption: String = label, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val shape = RoundedCornerShape(Radius.Card)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .size(104.dp)
-            .background(if (selected) Palette.Card else Palette.Rail, RoundedCornerShape(30.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .width(120.dp)
+            .height(112.dp)
+            .scale(if (pressed) 0.95f else 1f)
+            .background(
+                when {
+                    pressed -> Palette.Card.copy(alpha = 0.7f)
+                    selected -> Palette.Card
+                    else -> Palette.Rail
+                },
+                shape
+            )
+            .clickable(interactionSource = source, indication = null, onClick = onClick)
     ) {
-        Icon(icon, contentDescription = label, tint = if (selected) Palette.Ink else Palette.InkMuted, modifier = Modifier.size(52.dp).rotate(rotation))
-    }
-}
-
-/** La hora, con horas y minutos en dos líneas. Debajo, solo si falla la sincronización, un aviso. */
-@Composable
-private fun RailClock(state: UiState) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // Horas y minutos en dos líneas con las mismas métricas, cifras tabulares e interlineado ajustado a la
-        // altura de las cifras para que queden juntas. Las cifras que cambian se deslizan (RollingText).
-        val hour = if (state.clockValid) "%02d".format(state.now.hour) else "--"
-        val minute = if (state.clockValid) "%02d".format(state.now.minute) else "--"
-        val style = Type.Title.copy(
-            fontSize = 64.sp,
-            lineHeight = 52.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = (-2).sp,
-            fontFeatureSettings = "tnum",
-            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both)
+        Icon(icon, contentDescription = label, tint = if (selected) Palette.Ink else Palette.InkSoft, modifier = Modifier.size(48.dp).rotate(rotation))
+        Text(
+            caption,
+            modifier = Modifier.padding(top = 4.dp),
+            style = Type.Tiny.copy(
+                color = if (selected) Palette.Ink else Palette.InkSoft,
+                fontSize = 20.sp, lineHeight = 24.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+            ),
+            maxLines = 1
         )
-        // Cada línea es su propio texto (para animar sus cifras): se solapan para dejar el mismo interlineado de 52.
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(RAIL_CLOCK_OVERLAP)) {
-            RollingText(hour, style)
-            RollingText(minute, style.copy(color = Palette.InkSoft))
-        }
-        if (!state.online || !state.connected) {
-            Text("Sin conexión", style = Type.Tiny.copy(color = Palette.Accent), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
-        }
     }
 }
 
@@ -244,7 +263,7 @@ fun PillButton(
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 40.dp)
     ) {
-        Text(text, style = Type.Body.copy(color = if (primary) Palette.Card else Palette.Ink), maxLines = 1)
+        Text(text, style = Type.Body.copy(color = if (!enabled) Palette.InkSoft else if (primary) Palette.Card else Palette.Ink), maxLines = 1)
     }
 }
 

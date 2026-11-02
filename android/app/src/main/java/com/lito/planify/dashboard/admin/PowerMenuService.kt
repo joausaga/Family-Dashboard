@@ -8,7 +8,7 @@ import android.view.accessibility.AccessibilityEvent
 /**
  * Servicio de accesibilidad que solo sirve para abrir el menú de apagado de Android (Apagar / Reiniciar):
  * ninguna app, ni siendo Device Owner, puede apagar el dispositivo, pero un servicio de accesibilidad sí puede
- * mostrar ese menú. Lo activa install.sh (`settings put secure enabled_accessibility_services …`).
+ * mostrar ese menú. Requiere que la persona usuaria active el servicio en accesibilidad de Android.
  * El lock task tiene que permitir LOCK_TASK_FEATURE_GLOBAL_ACTIONS (ver [Kiosk]).
  */
 class PowerMenuService : AccessibilityService() {

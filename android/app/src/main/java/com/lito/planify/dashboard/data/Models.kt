@@ -1,13 +1,10 @@
 package com.lito.planify.dashboard.data
 
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-// --- Planify (solo lo que lee el dashboard) ---
-
-data class AuthRequest(val email: String, val password: String)
-
-data class UserResponse(val id: Int, val name: String, val email: String, val token: String?)
+// Modelos internos heredados de Planify; se conserva su formato para la caché existente.
 
 data class Person(val id: Int, val name: String, val color: String)
 
@@ -20,9 +17,14 @@ data class Event(
     val title: String,
     val date_at: String,
     val routine_id: Int? = null,
-    val persons: List<Person>? = null
+    val persons: List<Person>? = null,
+    /** ID completo de Google Calendar; null para eventos de la fuente Planify antigua. */
+    val google_calendar_id: String? = null,
+    /** Hora local de fin cuando la fuente la proporciona; null para eventos antiguos o de día completo. */
+    val end_at: String? = null
 ) {
     val at: LocalDateTime get() = LocalDateTime.parse(date_at, SQL_DATE_TIME)
+    val until: LocalDateTime? get() = end_at?.let { runCatching { LocalDateTime.parse(it, SQL_DATE_TIME) }.getOrNull() }
 }
 
 data class Task(
@@ -32,8 +34,24 @@ data class Task(
     val task_list_color: String?,
     val title: String,
     val order: Int,
-    val completed_at: String?
+    val completed_at: String?,
+    /** ID opaco completo de Google Tasks; null para tareas de la fuente Planify antigua. */
+    val google_task_list_id: String? = null,
+    /** Fecha Google Tasks en formato RFC 3339; puede ser nula. */
+    val due: String? = null
 )
+
+/** Omite tareas cuyo título vacío no tiene una fila útil que mostrar en la interfaz. */
+fun tasksWithTitles(tasks: List<Task>): List<Task> = tasks.filter { it.title.isNotBlank() }
+
+/** Hasta el límite solicitado: vencimientos próximos primero y tareas sin fecha al final, estables. */
+fun homeUpcomingTasks(tasks: List<Task>, limit: Int = 2): List<Task> =
+    tasksWithTitles(tasks)
+        .sortedBy { task -> task.due?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.MAX }
+        .take(limit.coerceAtLeast(0))
+
+/** Agrupa tareas por lista, conservando el orden recibido desde Google Tasks. */
+fun tasksGroupedByList(tasks: List<Task>): List<List<Task>> = tasks.groupBy { it.task_list_id }.values.toList()
 
 /** Contenido de Hoy (ver ContentRepository). */
 data class Content(
@@ -44,6 +62,58 @@ data class Content(
 
 /** Una semana del calendario (lunes a domingo), descargada al navegar hasta ella. */
 data class Week(val events: List<Event>, val sessions: List<Event>)
+
+/** Cinco fechas para la fila de Inicio: hoy más los cuatro días siguientes. */
+fun homeCalendarDates(today: LocalDate): List<LocalDate> = (0L..4L).map(today::plusDays)
+
+/** Lunes distintos que deben cargarse para dibujar el rango de Inicio. */
+fun homeCalendarWeekStarts(today: LocalDate): List<LocalDate> = homeCalendarDates(today)
+    .map { it.with(java.time.DayOfWeek.MONDAY) }
+    .distinct()
+
+/** Agrupa las sesiones que caen en la semana local de lunes a domingo, ordenadas por día y hora. */
+fun weeklyRoutineGroups(sessions: List<Event>, monday: LocalDate): Map<LocalDate, List<Event>> {
+    val start = monday.with(java.time.DayOfWeek.MONDAY)
+    val end = start.plusDays(7)
+    return sessions
+        .filter { it.at.toLocalDate() >= start && it.at.toLocalDate() < end }
+        .sortedBy { it.at }
+        .groupBy { it.at.toLocalDate() }
+        .toSortedMap()
+}
+
+/** Estado persistido de selección; la reconciliación conserva lo conocido y activa los IDs recién descubiertos. */
+data class CalendarVisibilitySelection(val knownIds: Set<String>, val visibleIds: Set<String>) {
+    fun reconcile(availableIds: Set<String>): CalendarVisibilitySelection = CalendarVisibilitySelection(
+        knownIds = availableIds,
+        visibleIds = if (knownIds.isEmpty() && visibleIds.isEmpty()) availableIds
+        else (visibleIds intersect availableIds) + (availableIds - knownIds)
+    )
+}
+
+fun Content.visibleInCalendars(calendarIds: Set<String>): Content = copy(
+    events = events.filter { it.google_calendar_id?.let(calendarIds::contains) == true },
+    sessions = sessions.filter { it.google_calendar_id?.let(calendarIds::contains) == true }
+)
+
+/** Filtra tareas por IDs completos de Google; no compara los IDs enteros derivados usados por la UI. */
+fun Content.visibleInTaskLists(taskListIds: Set<String>): Content = copy(
+    tasks = tasks.filter { it.google_task_list_id?.let(taskListIds::contains) == true }
+)
+
+/** Estado de selección de listas, con las listas nuevas activadas al reconciliar la enumeración. */
+data class TaskListVisibilitySelection(val knownIds: Set<String>, val visibleIds: Set<String>) {
+    fun reconcile(availableIds: Set<String>): TaskListVisibilitySelection = TaskListVisibilitySelection(
+        knownIds = availableIds,
+        visibleIds = if (knownIds.isEmpty() && visibleIds.isEmpty()) availableIds
+        else (visibleIds intersect availableIds) + (availableIds - knownIds)
+    )
+}
+
+fun Week.visibleInCalendars(calendarIds: Set<String>): Week = copy(
+    events = events.filter { it.google_calendar_id?.let(calendarIds::contains) == true },
+    sessions = sessions.filter { it.google_calendar_id?.let(calendarIds::contains) == true }
+)
 
 val SQL_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 

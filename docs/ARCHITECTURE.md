@@ -1,102 +1,71 @@
-# Arquitectura del dashboard
+# Arquitectura de Family Dashboard
 
-Cómo está hecha la app del marco: pantallas, datos, estructura y desarrollo. Para montar el marco, ver [SETUP.md](SETUP.md).
+Family Dashboard adapta la base Kotlin/Jetpack Compose de [Planify Dashboard](https://github.com/eusonlito/Planify-Dashboard) para Amazon Fire. El código y la identidad Android mantienen `com.lito.planify.dashboard` para conservar actualizaciones y OAuth.
 
-## Pantallas
+## Componentes activos
 
-La barra lateral izquierda tiene arriba, solo con iconos, Hoy, Calendario, Tiempo, Tareas, **sincronizar** (vuelve a pedir el contenido de Hoy, las semanas del calendario ya cargadas y el tiempo; el icono gira mientras dura), Ajustes y apagar la pantalla. Abajo del todo, la hora (horas y minutos en dos líneas, con "Sin conexión" debajo si falla la red o la sincronización). Tras 2 minutos sin tocar, vuelve a Hoy.
+Las rutas siguientes están bajo `android/app/src/main/java/com/lito/planify/dashboard/`:
 
-Sin sesión iniciada se muestra el login (icono de Planify y formulario, centrados). Si no hay Internet, en su lugar aparece "Esperando conexión a Internet…" con "Ir a Ajustes" (ajustes de Wi-Fi), y el formulario aparece solo cuando llega la red.
+| Componente | Responsabilidad |
+|---|---|
+| `MainActivity.kt` | Pantalla completa, escala geométrica/tipográfica, ciclo de vida, brillo y autorización Google |
+| `DashboardViewModel.kt`, `SyncStatus.kt` | Estado, sincronización, filtros por cuenta, reloj y sondeo TV |
+| `data/GoogleWorkspaceApi.kt` | REST de Google Calendar, Tasks y revocación OAuth |
+| `data/repository/GoogleWorkspaceRepository.kt` | Paginación, conversión de eventos, recurrentes y tareas |
+| `ContentRepository.kt`, `CalendarRepository.kt` en `data/repository/` | Contenido y semanas con caché, caducidad configurable y conservación ante fallos |
+| `data/Api.kt`, `data/repository/WeatherRepository.kt` | Open-Meteo y geocodificación, sin autenticación Planify |
+| `data/cache/` | JSON privado, escrituras atómicas y publicación de la última copia válida |
+| `data/Store.kt`, `data/ReferenceClock.kt` | Preferencias compatibles y hora de referencia |
+| `data/TvLocalApi.kt`, `data/repository/TvLocalUsageRepository.kt`, `data/TvUsage.kt` | Observaciones locales, historial persistente y agregados de TV |
+| `ui/App.kt` | Navegación, indicador de conexión y regreso a Inicio tras 120 s sin interacción |
+| `ui/TodayScreen.kt`, `ui/OverviewColors.kt` | Inicio de tres filas y paleta según hora local |
+| `ui/CalendarScreen.kt` | Calendario semanal heredado, alimentado por Google |
+| `ui/WeatherScreen.kt`, `ui/WeatherUi.kt` | Previsión y gráficos meteorológicos heredados |
+| `ui/WeatherIcons.kt`, `ui/MeteoconFrames.kt` | Iconos Meteocons prerenderizados y reloj común de animación |
+| `ui/TasksScreen.kt`, `ui/TaskUi.kt`, `data/TaskSections.kt` | Tareas, filtros y reglas compartidas con Inicio |
+| `ui/TvUsageScreen.kt`, `ui/TvFormat.kt` | Pantalla TV y formato de duraciones |
+| `ui/Settings*.kt` | Índice/detalle, controles, validación y esfera horaria Material 3 |
+| `ui/NightScreen.kt`, `power/ScreenSchedule.kt` | Reloj nocturno y alarmas de pantalla |
+| `admin/` | Quiosco opcional, botón de retorno desde Ajustes y servicio de apagado |
 
-- **Hoy:** rejilla de 3 columnas en dos filas (55 % y 45 % del alto).
-  - Arriba, en 1/3, la hora y la fecha centradas y lo **siguiente**, sea evento o rutina (tarjeta del color de su calendario: sus personas y, a la derecha, lo que falta en una píldora, como en la lista de próximos eventos; debajo, el título y el día y la hora). Solo si es de hoy o de mañana: si es más tarde, no hay tarjeta y el evento sale en la lista como los demás. Si es un evento, no se repite en la lista de próximos eventos; una rutina sigue también en la suya. En 2/3, la **tarjeta del tiempo**: icono, temperatura y estado; lluvia del día, humedad y viento como iconos con su valor (Meteocons estáticos); la curva hora a hora del día de hoy, de 00 a 23 h (la hora actual marcada con una banda translúcida, amarilla de día y gris de noche; la temperatura de todas las horas, pequeña y sin «°») con barras de lluvia solo donde llueve (el alto es la cantidad y el relleno, la probabilidad; ver más abajo); debajo, el icono del tiempo de cada hora y, abajo del todo, la hora; y, separados por una línea, los días en columnas, que se deslizan para ver la semana siguiente (vuelven a la primera a los 2 minutos). Al tocar un día, la cabecera y la curva pasan a ese día; tocarlo otra vez, o tocar hoy, vuelve a hoy (y vuelve solo a los 2 minutos). Deslizar sobre la curva pasa al día anterior o al siguiente: la curva es un pager de días que sigue al dedo (los días de abajo pasan a la página del día).
-  - Abajo, el **calendario del mes**, como el de Eventos de la app (las iniciales de los días; hoy en un círculo rojo suave; un punto por cada calendario con eventos ese día, hasta 3), que se desliza para cambiar de mes (12 hacia atrás y 12 hacia delante; el título lleva el año si no es el actual); **próximos eventos** con el formato del widget de la app (barra de color, "MIÉ 14 OCT · 16:00" con el tiempo que falta en una píldora, título y personas; los pasados en gris), y **rutinas de hoy** (la lista, con la siguiente resaltada y las pasadas atenuadas). Al tocar un día del calendario se marca con un aro gris y próximos eventos pasa a ser la lista de ese día ("Miércoles 21", incluido el siguiente evento); tocarlo otra vez vuelve a la lista. Tras 5 minutos sin tocar la pantalla, el calendario vuelve al mes actual y la lista a los próximos eventos. Las dos listas (próximos eventos y rutinas) se abren con un solo elemento pasado a la vista, el último, y los que faltan debajo; se recolocan cuando pasa otro y, si se han deslizado a mano, tras 1 minuto sin tocar la pantalla (`UpcomingList`).
-- **Calendario:** dos filas, la semana actual y la siguiente, de lunes a domingo, sin título (como el diseño de referencia). Se desliza en vertical de semana en semana (`VerticalPager` con páginas de media pantalla; un año hacia cada lado; "Volver a hoy", flotando abajo a la derecha, regresa a la actual). Cada día es una tarjeta (hoy, más clara): arriba el día de la semana ("Hoy" en rojo; el día 1, también el mes) y el número a la derecha; debajo, en una línea de alto fijo, el icono del tiempo, máxima y mínima y la lluvia con su gota; luego los eventos (barra de color, hora, título y personas) y abajo, en una caja, las rutinas (hora, un punto por persona y el nombre, que sigue en la línea de debajo). Los días pasados, atenuados. Cada semana se descarga al mostrarla, junto con las vecinas.
-- **Tiempo:** dos páginas que se deslizan. La primera es la tarjeta del tiempo a pantalla completa: el mismo día de hoy de 00 a 23 h que en Hoy (la temperatura de cada hora, también sin «°»), con el icono de cada hora encima de la hora, y 7 días. La segunda, la **semana siguiente** (días 8 a 14): gráfica de máximas y mínimas, lluvia (% y mm) y viento, y las columnas de cada día. En las dos páginas, tocar un día abre sus 24 horas (en la segunda, en lugar de la gráfica semanal) y tocarlo otra vez lo cierra. Deslizar sobre la gráfica cambia de día sin cambiar de página, con la gráfica siguiendo al dedo (en la segunda: semana → lunes → … → domingo); al pasar del último día de la primera sigue la segunda, y antes de su semana se vuelve a la primera. Deslizar fuera de la gráfica, entre las dos páginas.
-- **Iconos del tiempo:** [Meteocons](https://github.com/basmilius/meteocons) de Bas Milius (estilo *line*, licencia MIT, en `third_party/meteocons/`), uno por código WMO de Open-Meteo, de día o de noche. `scripts/meteocons.py` los descarga en la versión fijada, cambia los colores pensados para fondo oscuro (nubes, niebla y viento casi blancos) por tonos pizarra y los deja en `res/raw` (animados, Lottie) y `res/drawable` (los estáticos de la cabecera: nube con lluvia para la probabilidad, gota para la humedad y viento, con la unidad más pequeña). El código diario es el tiempo más significativo de todo el día (si hay niebla por la mañana, el día sale con niebla), así que la columna de hoy, en el tiempo y en el calendario, usa el tiempo de ahora, como la cabecera.
-  - **Animados:** el icono de la cabecera y los de las columnas de días (Hoy, Tiempo y Calendario); la fila de horas, estática. Dibujar los Lottie en cada fotograma costaba 1–2 núcleos y subía el marco a 72 °C, así que cada icono se renderiza una vez en segundo plano a su tamaño exacto (90 fotogramas: su bucle de 6 s a 15 fps, caché de 48 MB) y animarlo es pintar un bitmap, todos sincronizados con un único reloj. Medido en el marco: Hoy 31 % de un núcleo, Tiempo 37 %, Calendario 25 %, sin pasar de 61 °C; la app ocupa unos 175 MB y quedan unos 400 MB libres. Con la pantalla apagada no se anima nada.
-- **Reloj:** en Hoy, un reloj de paletas (`FlipClock`): cada cifra en una placa grafito partida por la mitad y, al cambiar, la mitad de arriba cae y descubre la nueva (medio segundo, solo las cifras que cambian). En la barra lateral, las cifras se deslizan (`RollingText`). Las escalas de animación del sistema están a 0 en el marco, así que estas animaciones fuerzan su propia escala para verse.
-- **Máximas y mínimas:** salen de las 24 horas de cada día (`withDailyFromHourly`, una vez al recibir la previsión), para que el resumen, las cabeceras y las gráficas digan siempre lo mismo. Las diarias de Open-Meteo se calculan con más detalle que la hora en punto y no coincidían.
-- **Tareas:** todas las listas del dashboard en columnas.
+## Datos y autorización
 
-Las tarjetas llevan una cabecera común (`CardHeader`): icono en un cuadro tintado, título y el total en una píldora del mismo color. En las gráficas del tiempo, la barra de lluvia mide la **cantidad**, no la probabilidad: el alto parte del justo para el número de mm, que va dentro, abajo y en blanco, y crece en proporción a la cantidad hasta llenarse con 10 mm en una hora (30 mm en un día; desde 15 mm en una hora, un azul más intenso). La opacidad del relleno es la probabilidad, sin número: maciza al 100 % y vacía al 0 %, con un contorno suave siempre para que se vea la barra. En Hoy, la lluvia se lleva más alto de la gráfica (el 60 %) para que las barras se distingan. La curva de temperatura solo deja abajo el alto de la barra más alta (sin lluvia, ninguno), así que usa todo el alto que puede y se ve bien la diferencia entre la mínima y la máxima. Sin lluvia apreciable (menos de 0,1 mm) no hay barra. Open-Meteo da la lluvia de la hora anterior, así que cada columna enseña la de la hora que empieza en ella (la de las 05, de 05 a 06). La cabecera y los días llevan también el total del día en mm: primero los mm y después el % (en los días, nada si es un 0 %). Las listas que no caben se desvanecen en el borde (`fadingScroll`) en vez de cortar el texto. Las tarjetas sin contenido muestran un estado vacío (`EmptyState`): icono en círculos del color de la tarjeta, título y una línea.
-- **Reloj nocturno** (`NightScreen`): fuera de horario, si no se ha elegido apagar la pantalla, la hora, la fecha y el tiempo de ahora en negrita y en blanco sobre negro (el icono del tiempo, teñido de blanco), estáticos, con el brillo al mínimo (`MainActivity` pone `screenBrightness` a 1/255 mientras `UiState.night`). Tocar enseña el dashboard 5 minutos (`peekUntil`). La luna de la barra lateral también lo activa si está el reloj nocturno (`nightNow`, hasta que se toque o hasta el siguiente encendido); si no, apaga la pantalla con `lockNow()`.
-- **Ajustes:**
-  - tres columnas que caben sin desplazamiento;
-  - ubicación (Open-Meteo); horario de pantalla; **brillo** (en el título, el porcentaje elegido o «automático»; deslizador propio, del 5 al 100 % de 5 en 5, y a su derecha «A», el brillo automático del sistema, que deja el deslizador desactivado y translúcido) y **Conexión** (estado del Wi-Fi) en una caja, y debajo, en otra, Wi-Fi, Ajustes de Android, Cerrar sesión y Apagar o reiniciar;
-  - todos los botones, a lo ancho y del mismo alto.
+- Play Services Identity Authorization API entrega el access token. Solo se solicitan `calendar.readonly` y `tasks.readonly`; el token no se persiste en preferencias ni hay secreto OAuth en el APK.
+- Ante un 401, se solicita renovar la autorización conservando la caché. Cerrar sesión intenta revocar el token y limpia la caché Google, no el historial local de TV ni la ubicación meteorológica.
+- Calendar enumera calendarios (incluidos ocultos), expande recurrencias con `singleEvents=true`, omite cancelados y convierte fechas a la zona del dispositivo. El contenido general consulta desde el primer día del mes de hace 12 meses hasta 366 días después de hoy; las sesiones de ese contenido se limitan a la semana actual. Las vistas también cargan semanas específicas.
+- Tasks enumera listas y tareas por páginas y descarta completadas. Se conservan IDs opacos completos; los IDs enteros derivados siguen en la interfaz heredada.
+- Selecciones por cuenta: ID del calendario principal como clave; nuevas fuentes visibles inicialmente, preferencias conocidas conservadas e IDs retirados reconciliados. Se permite desactivar todas las fuentes. Ocultar filtra la presentación, no revoca permisos ni evita toda descarga.
+- Calendario/tareas: 5 minutos por defecto, configurable entre 5, 10, 20, 30, 40, 50 y 60. Clima: 30 minutos. TV: 1 minuto por defecto, configurable entre 1, 3, 5, 10, 15, 30, 45 y 60. Los bucles dependen del ciclo de vida activo.
+- Se conservan 12 semanas descargadas recientemente. La sincronización manual refresca las semanas ya cargadas, contenido, clima y TV.
 
-## Cómo funciona
+## Persistencia e invariantes
 
-- **App nativa** con Jetpack Compose, minSdk 29 y sin librerías nativas (el marco es de 32 bits).
-- **Píxeles nativos:** la densidad del sistema no se toca. La app fija `Density(1f)`, así que todo se diseña en los 1920×1200 píxeles del panel (1 dp = 1 px).
-- **Datos:**
-  - `GET /event?dashboard=true` (eventos: todos desde hoy, sin fecha de fin; sesiones de rutina: hoy + 6 días) y `GET /task?dashboard=true` cada 5 minutos;
-  - el Calendario pide cada semana al mostrarla (y la vuelve a pedir si tiene más de 5 minutos);
-  - Open-Meteo cada 30 minutos: el día anterior (para las horas previas de madrugada) y 14 días;
-  - **Sin red, todo como la última vez.** Cada dato remoto (contenido de Hoy, previsión y cada semana del calendario) tiene su copia en disco y se pinta desde ella al arrancar; si una descarga falla, se sigue mostrando la última buena y la barra indica "Sin conexión". Al volver la red se actualiza solo. Ver [Capa de datos](#capa-de-datos).
-  - al recuperar la red se sincroniza enseguida;
-  - con la pantalla apagada no se refresca. Lo último se guarda en caché: sin red se sigue mostrando y la barra lateral dice "Sin conexión".
-- **Hora:** el RTC del marco no la conserva. Hasta que NTP la corrige, cualquier hora anterior a la compilación de la app se trata como falsa ("Sincronizando hora…").
-- **Quiosco** con Device Owner: lock task, HOME persistente, sin keyguard ni barra de estado. El horario apaga la pantalla (`lockNow`, como pulsar el botón de encendido: el marco sigue encendido y conectado) y la enciende con una alarma. "Apagar" en la barra lateral hace lo mismo al momento.
-- **Autenticación:** email y contraseña de Planify. El dashboard solo hace peticiones de lectura.
-- **Diseño:** fondo crema, tarjetas blancas sin borde y el color solo en calendarios, listas y personas, con las fuentes Geist y Geist Mono (OFL, `licenses/Geist-OFL.txt`).
+- `SharedPreferences("dashboard")`: ubicación, horario, brillo, última hora válida, selección por cuenta, estado de autorización y configuración TV.
+- `files/cache`: claves existentes `content`, `week-<lunes>`, `forecast` y `tv_usage_history`. No se renombran en la limpieza.
+- Los modelos `Event`, `Task`, `Person`, `Content`, `Week`, `Schedule` e historial TV mantienen los campos necesarios para leer datos existentes. `persons` aún tiene consumidores en Calendario, aunque Google no lo rellene.
+- `sourceRowCounts` y `sourceOrders` del historial TV conservan metadatos importados anteriormente; el sondeo local los copia al persistir. No hay cliente activo de Sheets/Drive ni importador remoto.
+- Las preferencias antiguas de sesión y su limpieza se conservan por compatibilidad. Los access tokens activos solo viven en memoria.
+- `ReferenceClock` conserva la última hora válida. Sin hora válida no se consultan rangos remotos y el reloj no presenta una hora falsa.
 
-## Estructura
+## Presentación y hardware
 
-```
-android/                     proyecto Gradle (mismas versiones que Planify-APP)
-  app/src/main/java/com/lito/planify/dashboard/
-    MainActivity.kt          launcher, inmersivo, Density(1f), quiosco y brillo
-    DashboardViewModel.kt    estado, refrescos, login, ubicación, horario
-    data/                    Api (Planify + Open-Meteo), modelos, Store (sesión y ajustes), ReferenceClock
-    data/cache/              DiskCache y CachedResource (copia en disco, stale-if-error)
-    data/repository/         ContentRepository, WeatherRepository, CalendarRepository
-    admin/Kiosk.kt           Device Owner: lock task, HOME, lockNow, salir y quitar
-    power/ScreenSchedule.kt  horario de pantalla (alarmas exactas, wakelock, apagado de cortesía)
-    ui/                      barra lateral y pantallas; WeatherUi (HourlyForecast en Canvas), WeatherIcons y
-                             MeteoconFrames (Meteocons pre-renderizados), FlipClock y RollingText
-scripts/install.sh           instala y prepara el marco (ver SETUP.md); se configura en scripts/config.local
-scripts/frame/               copia de la eMMC, cortafuegos de arranque e init .rc
-scripts/boot/                logo del bootloader y animación de arranque (boot.html → make.sh → install.sh)
-scripts/meteocons.py         iconos del tiempo (Meteocons) para res/raw y res/drawable
-third_party/meteocons/       licencia MIT de Meteocons
-docs/                        FRAME (ficha del dispositivo), ANDROID (versiones), SETUP (instalación)
-```
+Geometría basada en 1920 × 1200, escala hasta 1 según lados largo/corto. En 1280 × 800 resulta 0,667; el texto usa `fontScale` mínimo de 1,35 cuando se reduce la geometría. La Fire emplea banderas inmersivas legacy; las versiones recientes usan controladores de insets.
 
-## Desarrollo
+La identidad visual usa crema/azul y tokens de `ui/theme/Theme.kt`. Geist es la tipografía principal; Geist Mono sigue en Tiempo y el reloj nocturno. La cabecera de Inicio interpola colores según hora local y selecciona contenido por contraste, incluyendo celdas con blanco al 20%.
 
-Para el emulador hace falta un AVD con las medidas del marco (API 29, 1920×1200, 320 dpi, 1 GB):
+El modo nocturno reduce el brillo de ventana a `1/255`. Las alarmas conservan alternativas para API 22. La instalación documentada no es Device Owner; las políticas de quiosco solo actúan si se aprovisionan por separado. El botón de retorno y el servicio opcional de apagado se conservan por sus referencias activas.
+
+## TV
+
+Consulta GET de solo lectura a `http://<IP>:8001/api/v2/` en la LAN. Respuesta válida confirma el estado según el contrato Samsung; error o timeout registra OFF inferido. Observaciones repetidas no duplican transiciones. La primera observación local no atribuye tiempo anterior desconocido y conserva intervalos importados.
+
+Los totales se reparten por fronteras de hora/día/mes en `America/Asuncion`; no se asumen días de 24 horas. Estado antiguo tras 6 horas sin observación se considera desactualizado. Inicio resume el apagado como «Apagada»; la pantalla TV añade el aviso de inferencia cuando corresponde. No se cambia este comportamiento durante la limpieza.
+
+## Pruebas
 
 ```sh
-sdkmanager "system-images;android-29;default;x86"
-avdmanager create avd -n Frame_API_29 -k "system-images;android-29;default;x86" -d pixel_c
-# En ~/.android/avd/Frame_API_29.avd/config.ini:
-#   hw.lcd.width=1920  hw.lcd.height=1200  hw.lcd.density=320  hw.ramSize=1024  hw.initialOrientation=landscape
-emulator -avd Frame_API_29
+cd android
+ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew :app:testDebugUnitTest :app:assembleRelease
 ```
 
-- La build **debug** usa el backend local (`planify.debugBaseUrl`, por defecto `http://10.0.2.2:3000/`: `php -S 0.0.0.0:3000 -t public public/index.php` en Planify-Backend).
-- La **release** usa `planify.baseUrl` de `android/planify.properties` (ver `planify.properties.example`); sin ella no compila.
-- Pruebas: `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleRelease` (en `android/`).
-
-**Entorno de demo** (`scripts/demo.sh`), para probar sin datos reales y hacer las capturas del README:
-
-- `scripts/demo.sh app [--no-build]` deja el emulador listo en un paso: levanta el backend de demo, arranca el AVD si no lo está, le pone la hora del PC, compila e instala la debug y entra con la cuenta de demo (escribe la sesión en las preferencias de la app, sin teclear).
-- El backend de demo es una copia de Planify-Backend (`PLANIFY_BACKEND`, por defecto `../backend`) en `.demo/` (git lo ignora), en el puerto 3001, con una familia ficticia de `scripts/demo/seed.py`: personas, 2 calendarios, eventos alrededor de hoy, rutinas y listas de tareas. Las fechas son relativas al día, así que se vuelve a crear si es de otro día.
-- `up` solo levanta el backend, `down` lo para y `reset` lo crea desde cero.
-
-Para probar el quiosco en el emulador basta con `adb shell dpm set-device-owner com.lito.planify.dashboard/.admin.AdminReceiver` en un AVD sin cuentas.
-
-## Capa de datos
-
-La pantalla nunca habla con la red directamente: `DashboardViewModel` usa un repositorio por tipo de dato y pinta lo que publican.
-
-- **`DiskCache`** (`data/cache/`): un fichero JSON por clave en `files/cache/`. Cada escritura va a un temporal, se sincroniza con el disco (`fsync`) y se renombra encima del anterior: un corte de luz deja la versión vieja o la nueva, nunca una a medias. Un fichero ilegible cuenta como vacío y se vuelve a descargar.
-- **`CachedResource<T>`**: un dato remoto con su copia (`Cached(value, fetchedAt)`), con la estrategia *stale-if-error*. Al crearse publica la copia de disco (el primer fotograma ya sale completo); `refresh` descarga, guarda y publica, y si falla deja la copia tal cual y devuelve el error; dos refrescos del mismo dato nunca se solapan; `isStale()` dice si ha caducado.
-- **Repositorios** (`data/repository/`): `ContentRepository` (eventos desde el día 1 del mes, rutinas de la semana y tareas; caduca a los 5 min), `WeatherRepository` (Open-Meteo; 30 min; se borra al cambiar de ubicación) y `CalendarRepository` (una entrada `week-<lunes>` por semana, 5 min, se conservan las 12 descargadas más recientemente). Las respuestas HTTP sin éxito son `HttpError`; un 401 cierra la sesión y borra los datos de la cuenta.
-- **`ReferenceClock`**: el RTC del marco no guarda la hora y, sin red, arranca en la fecha de fábrica. Mientras tanto todo se pinta con la última hora válida (guardada como mucho una vez por minuto), así que la caché se ve igual que la última vez; el reloj muestra "--:--". Sin hora válida no se pide nada a la red, porque las fechas de la petición serían las de fábrica.
-- `Store` (SharedPreferences) solo guarda la sesión y los ajustes del dispositivo.
-
-Tests (`./gradlew :app:testDebugUnitTest`): `DiskCacheTest`, `CachedResourceTest`, `ReferenceClockTest`, `CalendarRepositoryTest` (con una API falsa), `ForecastTest` y `ScreenScheduleTest`.
-
+Las pruebas de caché y calendario usan APIs Google falsas, sin servidor Planify. Se cubren paginación, recurrencias, selección por cuenta, vencimientos, horarios, intervalos TV, restauración del historial importado y contraste de la cabecera durante los 1440 minutos del día. El inventario de validación vigente está en [TASKS.md](../SPECS/current-version/TASKS.md).

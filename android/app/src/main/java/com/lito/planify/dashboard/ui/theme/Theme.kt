@@ -5,6 +5,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lito.planify.dashboard.R
 
@@ -27,6 +28,50 @@ object Palette {
     val Highlight = Color(0xFFF6ECDD)
     val Offline = Color(0xFFB5A99A)
     val Online = Color(0xFF3BA55C)
+    /** Identidad visual exclusiva para seguimiento de TV; Online queda reservado para tareas/conectividad. */
+    val Television = Color(0xFF6659A6)
+    val TelevisionSoft = Color(0xFFECE8F7)
+
+    // Semánticos (antes hex sueltos en TodayScreen)
+    val Border = Color(0xFFE8DAC6)
+    val Divider = Color(0xFFEADBC6)
+    val Success = Color(0xFF1F7A43)
+    val SuccessSoft = Color(0xFFE3F3E6)
+    val TaskInk = Color(0xFF3A3128)
+    val TodayTint = Color(0xFFFFF3EE)
+    val TodayBorder = Color(0xFFF1C7BD)
+    val AccentSoft = Color(0xFFFBDDD8)
+    val AmberInk = Color(0xFF9A5B00)
+    val AmberSoft = Color(0xFFFFEBCB)
+    val SwitchOff = Color(0xFF968978)
+    val ScheduleNight = Color(0xFF5B6B9A)
+    val RainOnDark = Color(0xFF9FD3FF)
+    // Identidad de TV: héroe (encendida / resto) y escala de intensidad del mapa de calor
+    val TelevisionDeep = Color(0xFF47397F)
+    val TelevisionBright = Color(0xFF7B6CCF)
+    val TelevisionDim = Color(0xFF4B4666)
+    val TelevisionDimEnd = Color(0xFF6A6588)
+    val TelevisionOn = Color(0xFF8BE3A8)
+    val TvHeat = listOf(Color(0xFFEFEAF6), Color(0xFFD9D1F0), Color(0xFFB7ABE3), Color(0xFF8E7FCF), Color(0xFF5F4FAE))
+    val EmptyIcon = Color(0xFFCFC3B2)
+}
+
+object Radius {
+    val Small = 14.dp
+    val Chip = 16.dp
+    val Column = 20.dp
+    val Pill = 24.dp
+    val Card = 28.dp
+    val Panel = 36.dp
+}
+
+/** Escala de espaciado en múltiplos de 4/8 (px del panel). */
+object Space {
+    val XS = 4.dp
+    val S = 8.dp
+    val M = 16.dp
+    val L = 24.dp
+    val XL = 32.dp
 }
 
 val Geist = FontFamily(

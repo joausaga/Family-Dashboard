@@ -49,7 +49,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Abre el menú de apagado nativo (botón "Apagar o reiniciar"). Lo activa install.sh. -->
+        <!-- Servicio opcional del menú de apagado nativo; requiere activación en accesibilidad. -->
         <service
             android:name=".admin.PowerMenuService"
             android:exported="true"

@@ -1,5 +1,6 @@
 package com.lito.planify.dashboard.power
 
+import androidx.core.content.ContextCompat
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -62,20 +63,22 @@ object ScreenSchedule {
     /** Programa la próxima alarma. Se llama al arrancar, al cambiar el horario y tras cada alarma. */
     fun reschedule(context: Context) {
         val schedule = Store(context).schedule
-        val alarms = context.getSystemService(AlarmManager::class.java)
+        val alarms = ContextCompat.getSystemService(context, AlarmManager::class.java)!!
         val pending = pendingIntent(context)
         alarms.cancel(pending)
         if (!schedule.enabled || !clockValid()) return
 
         val now = LocalDateTime.now()
-        val screenOn = context.getSystemService(PowerManager::class.java).isInteractive
+        val screenOn = ContextCompat.getSystemService(context, PowerManager::class.java)!!.isInteractive
         val next = if (schedule.screenOff && screenOn && !isOn(schedule, now)) now.plusMinutes(GRACE_MINUTES) else nextChange(schedule, now)
         val at = next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarms.canScheduleExactAlarms()) {
-            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
-        } else {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarms.canScheduleExactAlarms() ->
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ->
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+            else -> alarms.setExact(AlarmManager.RTC_WAKEUP, at, pending)
         }
     }
 
@@ -91,7 +94,7 @@ object ScreenSchedule {
 
     @Suppress("DEPRECATION") // SCREEN_BRIGHT + ACQUIRE_CAUSES_WAKEUP es la única forma de encender la pantalla desde una alarma.
     fun wake(context: Context) {
-        val power = context.getSystemService(PowerManager::class.java)
+        val power = ContextCompat.getSystemService(context, PowerManager::class.java)!!
         if (!power.isInteractive) {
             power.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "dashboard:wake")
                 .acquire(10_000)

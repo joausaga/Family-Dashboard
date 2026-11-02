@@ -5,36 +5,12 @@ import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.Header
-import retrofit2.http.POST
-import retrofit2.http.Query
 import retrofit2.http.Url
 import java.util.concurrent.TimeUnit
 
-/** Planify (solo lectura: autenticación y listados del dashboard) y Open-Meteo. */
+/** Pronóstico y geocodificación de Open-Meteo. */
 interface Api {
-    @POST("user/auth")
-    suspend fun auth(@Body request: AuthRequest): Response<UserResponse>
-
-    /**
-     * `start_date`/`end_date`: hora local expresada como segundos epoch en UTC, igual que la app. Sin `end_date`
-     * (null) no hay límite: todos los eventos desde `start_date`.
-     */
-    @GET("event")
-    suspend fun events(
-        @Header("Authorization") auth: String,
-        @Query("start_date") start: Long,
-        @Query("end_date") end: Long?,
-        @Query("routine") routine: Boolean,
-        @Query("timezone") timezone: String,
-        @Query("dashboard") dashboard: Boolean = true
-    ): Response<List<Event>>
-
-    @GET("task")
-    suspend fun tasks(@Header("Authorization") auth: String, @Query("dashboard") dashboard: Boolean = true): Response<List<Task>>
-
     @GET
     suspend fun forecast(@Url url: String): Response<Forecast>
 

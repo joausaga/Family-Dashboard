@@ -56,6 +56,16 @@ class CachedResourceTest {
         assertTrue(resource.isStale())
     }
 
+    @Test
+    fun staleCheckAcceptsSelectedMaxAgeWithoutChangingDefaultTtl() = runBlocking {
+        val resource = resource()
+        resource.refresh { "sample" }
+        clock += 70_000L
+
+        assertTrue(resource.isStale(60_000L))
+        assertFalse(resource.isStale(120_000L))
+    }
+
     @Test(expected = CancellationException::class)
     fun cancellationIsNotSwallowed(): Unit = runBlocking {
         resource().refresh { throw CancellationException("cancelado") }

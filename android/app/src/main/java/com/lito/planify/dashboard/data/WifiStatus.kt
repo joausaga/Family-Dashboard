@@ -1,5 +1,6 @@
 package com.lito.planify.dashboard.data
 
+import androidx.core.content.ContextCompat
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -17,7 +18,7 @@ data class WifiStatus(val ssid: String?, val rssi: Int?, val ip: String?)
  * Devuelve null si no hay Wi-Fi conectado. Hace E/S: llamar fuera del hilo principal.
  */
 fun readWifiStatus(context: Context): WifiStatus? {
-    val connectivity = context.getSystemService(ConnectivityManager::class.java)
+    val connectivity = ContextCompat.getSystemService(context, ConnectivityManager::class.java)!!
     val network = connectivity.allNetworks.firstOrNull {
         connectivity.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     } ?: return null
@@ -25,7 +26,7 @@ fun readWifiStatus(context: Context): WifiStatus? {
         ?.map { it.address }?.firstOrNull { it is Inet4Address }?.hostAddress
 
     @Suppress("DEPRECATION")
-    val info = context.applicationContext.getSystemService(WifiManager::class.java).connectionInfo
+    val info = ContextCompat.getSystemService(context.applicationContext, WifiManager::class.java)!!.connectionInfo
     val ssid = info?.ssid?.removeSurrounding("\"")?.takeIf { it.isNotBlank() && it != UNKNOWN_SSID }
         ?: driverValue("ap_info", "SSID=")
     val rssi = info?.rssi?.takeIf { it in -110..-1 }

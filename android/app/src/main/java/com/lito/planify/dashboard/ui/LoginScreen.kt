@@ -2,12 +2,7 @@ package com.lito.planify.dashboard.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
@@ -31,11 +25,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lito.planify.dashboard.R
@@ -44,60 +34,54 @@ import com.lito.planify.dashboard.ui.theme.Palette
 import com.lito.planify.dashboard.ui.theme.Type
 
 /**
- * Inicio de sesión con la cuenta de Planify. El dashboard solo lee: nunca modifica contenido.
- * Sin Internet no tiene sentido el formulario: se espera a la red, con acceso a los ajustes de Wi-Fi.
+ * Conexión a Google. Se solicitan permisos de solo lectura para Calendar y Tasks después de tocar el botón.
+ * Sin Internet no se inicia OAuth: se espera a la red, con acceso a los ajustes de Wi-Fi.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LoginScreen(state: UiState, onLogin: (String, String) -> Unit, onWifi: () -> Unit) {
+fun LoginScreen(state: UiState, onLogin: () -> Unit, onWifi: () -> Unit) {
     if (!state.connected) {
         WaitingForNetwork(onWifi)
         return
     }
-    var email by remember { mutableStateOf(state.email.orEmpty()) }
-    var password by remember { mutableStateOf("") }
-    val canSubmit = email.isNotBlank() && password.isNotEmpty() && !state.loggingIn
-
-    val focusManager = LocalFocusManager.current
-    // Con el teclado abierto el formulario sube por encima de él y el icono se oculta para que quepa entero.
-    val keyboardOpen = WindowInsets.isImeVisible
     Box(
         Modifier
-            .fillMaxSize()
-            .imePadding()
-            // Sin barra de navegación no hay "atrás": tocar fuera de los campos cierra el teclado.
-            .pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } },
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(Modifier.width(760.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            if (!keyboardOpen) {
-                Image(
-                    painterResource(R.drawable.planify_icon),
-                    contentDescription = "Planify",
-                    modifier = Modifier.size(144.dp).align(Alignment.CenterHorizontally).padding(bottom = 8.dp)
-                )
-            }
-            Text(
-                "Inicia sesión",
-                style = Type.Huge.copy(fontSize = Type.Title.fontSize * if (keyboardOpen) 1.4f else 2f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = if (keyboardOpen) 4.dp else 24.dp)
+        Column(Modifier.width(760.dp), verticalArrangement = Arrangement.spacedBy(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painterResource(R.drawable.planify_icon),
+                contentDescription = "Family Dashboard",
+                modifier = Modifier.size(144.dp).padding(bottom = 8.dp)
             )
-            Field(email, { email = it }, "Email", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
-            Field(password, { password = it }, "Contraseña", Modifier.fillMaxWidth(), password = true) {
-                if (canSubmit) onLogin(email, password)
-            }
+            Text(
+                "Conecta Google Calendar y Tasks",
+                style = Type.Huge.copy(fontSize = Type.Title.fontSize * 1.6f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+            )
+            Text(
+                "Family Dashboard solo leerá tus calendarios, eventos recurrentes y tareas pendientes.",
+                style = Type.Body,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
             state.loginError?.let { Text(it, style = Type.Body.copy(color = Palette.Accent)) }
-            PillButton(if (state.loggingIn) "Entrando…" else "Entrar", Modifier.fillMaxWidth(), primary = true, enabled = canSubmit) {
-                onLogin(email, password)
+            PillButton(
+                if (state.loggingIn) "Conectando…" else "Continuar con Google",
+                Modifier.fillMaxWidth(),
+                primary = true,
+                enabled = !state.loggingIn
+            ) {
+                onLogin()
             }
         }
     }
 }
 
 /**
- * Arco que gira una vez por segundo. El marco tiene las escalas de animación del sistema a 0 (install.sh) y Compose
- * las respeta, así que el indicador indeterminado de Material se quedaría quieto: el giro va con el reloj de fotogramas.
+ * Arco que gira una vez por segundo incluso si las animaciones del sistema están desactivadas:
+ * el giro va con el reloj de fotogramas.
  */
 @Composable
 private fun Spinner() {

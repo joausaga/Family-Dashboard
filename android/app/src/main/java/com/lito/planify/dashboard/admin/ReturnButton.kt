@@ -1,10 +1,12 @@
 package com.lito.planify.dashboard.admin
 
+import androidx.core.content.ContextCompat
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -22,7 +24,7 @@ import com.lito.planify.dashboard.R
  * sin este botón, desde la portada de Ajustes (que no tiene flecha atrás) no hay forma de volver.
  * Vuelve solo tras [IDLE_MS] sin tocar la pantalla: la superposición recibe un aviso con cada toque
  * fuera de ella (FLAG_WATCH_OUTSIDE_TOUCH), también en el teclado, y reinicia la cuenta.
- * Necesita el permiso de superposición (`appops set … SYSTEM_ALERT_WINDOW allow`, lo da install.sh);
+ * Necesita el permiso de superposición (`SYSTEM_ALERT_WINDOW`) concedido en el dispositivo;
  * sin él no se muestra nada.
  */
 // El botón se crea con el contexto de la aplicación y se suelta en hide(): no retiene ninguna actividad.
@@ -38,7 +40,8 @@ object ReturnButton {
     @SuppressLint("ClickableViewAccessibility")
     fun show(context: Context) {
         val app = context.applicationContext
-        if (view != null || !Settings.canDrawOverlays(app)) return
+        val canDrawOverlays = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(app)
+        if (view != null || !canDrawOverlays) return
         // Medidas en píxeles del panel, como el resto de la app
         val button = ImageView(app).apply {
             setImageResource(R.drawable.ic_home)
@@ -58,7 +61,8 @@ object ReturnButton {
         val params = WindowManager.LayoutParams(
             SIZE,
             SIZE,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
@@ -68,7 +72,7 @@ object ReturnButton {
             x = 40
             y = 40
         }
-        runCatching { app.getSystemService(WindowManager::class.java).addView(button, params) }
+        runCatching { ContextCompat.getSystemService(app, WindowManager::class.java)!!.addView(button, params) }
             .onSuccess {
                 view = button
                 restartIdle(app)
@@ -81,7 +85,7 @@ object ReturnButton {
         timeout = null
         val current = view ?: return
         view = null
-        runCatching { context.applicationContext.getSystemService(WindowManager::class.java).removeView(current) }
+        runCatching { ContextCompat.getSystemService(context.applicationContext, WindowManager::class.java)!!.removeView(current) }
     }
 
     private fun restartIdle(context: Context) {
