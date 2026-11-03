@@ -17,6 +17,25 @@ class TvFormatTest {
     }
 
     @Test
+    fun heatmapDurationLabelsAreCompactAndHideZeroUsage() {
+        assertEquals("", compactHeatDuration(0))
+        assertEquals("<1m", compactHeatDuration(59_999))
+        assertEquals("1m", compactHeatDuration(min(1)))
+        assertEquals("59m", compactHeatDuration(min(59)))
+        assertEquals("1h", compactHeatDuration(min(60)))
+        assertEquals("1h5", compactHeatDuration(min(65)))
+        assertEquals("8h23", compactHeatDuration(min(8 * 60 + 23)))
+    }
+
+    @Test
+    fun hourlyBarLabelsAlwaysShowConsumption() {
+        assertEquals("", compactHourDuration(0))
+        assertEquals("<1m", compactHourDuration(59_999))
+        assertEquals("46m", compactHourDuration(min(46)))
+        assertEquals("1h", compactHourDuration(min(60)))
+    }
+
+    @Test
     fun agoLabelCoversRanges() {
         assertEquals("hace unos segundos", tvAgoLabel(30_000))
         assertEquals("hace 5 min", tvAgoLabel(min(5)))

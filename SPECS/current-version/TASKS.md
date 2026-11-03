@@ -35,6 +35,50 @@
 - [x] Tras autorización posterior, cambiar applicationId/namespace/paquetes a `com.joausaga.familydashboard`, generar firma propia fuera del repositorio y conservar clave/app/cliente anteriores. Release correcta y 159 pruebas; nueva app instalada en paralelo y pantalla de conexión Google comprobada en Fire.
 - [x] Cliente OAuth Android adicional y conexión Google validados; restauración real de historial/configuración, **2 de 5** calendarios, **1 de 2** listas, **8 h 23 min**, persistencia tras reinicio y nueva copia verificada con 39 transiciones originales conservadas. Tras validar, con autorización, se desinstaló la app anterior; se conservan APK, firma, cliente OAuth y copias. Evidencia completa en [android-identity](../android-identity/TASKS.md); sin commit/push.
 
+## Rediseño de pantalla TV
+
+- [x] Especificar visualización horaria seleccionable con consumo, y fecha/consumo en celdas del heatmap.
+- [x] Reemplazar barras por línea horaria de 24 puntos con selector, hora actual, etiquetas de eje y valores de detalle.
+- [x] Añadir día del mes y consumo compacto solo si es positivo; mantener detalle de fecha completa y etiqueta accesible.
+- [x] Pruebas, build release y revisión visual en Fire KFDOWI/API 22; comprobar rangos heatmap de 4/8/26 semanas.
+
+### Evidencia — 2026-11-03
+
+- `testDebugUnitTest assembleRelease`: **160 pruebas, 0 fallos/errores; BUILD SUCCESSFUL**.
+- Release instalada en sitio con `adb install -r`, misma identidad y firma; sin borrar datos. Fire HD 8 KFDOWI/API 22.
+- Revisado visualmente el gráfico horario: trayectoria de 24 puntos, hora actual marcada, horas futuras atenuadas, valor de consumo en detalle y selección táctil por intervalo.
+- Revisado heatmap con 4, 8 y 26 semanas. Día del mes visible y consumo compacto únicamente en días con uso; al seleccionar la celda del 2 Nov, detalle «Lun 2 Nov · 10 h 11 min». Rango restituido a 8 semanas.
+- `git diff --check`: limpio. Capturas de prueba conservadas fuera del repositorio; sin commit/push.
+
+### Ajuste posterior — barras por hora
+
+- [x] Sustituir la línea horaria por 24 barras; anotar el consumo sobre el extremo superior solo si es positivo, manteniendo selección, hora actual y atenuación de horas futuras.
+- [x] Pruebas, build e inspección visual de etiquetas de las 24 barras en Fire.
+
+### Evidencia — 2026-11-03
+
+- `testDebugUnitTest assembleRelease`: **161 pruebas, 0 fallos/errores; BUILD SUCCESSFUL**.
+- Release actualizada en sitio con la misma firma y paquete en Fire KFDOWI/API 22; no se borraron datos.
+- Inspección visual: las 24 horas se representan; solo las barras con consumo tienen rótulo sobre el extremo superior, mientras que el cero queda sin etiqueta. La selección de una hora continúa mostrando intervalo y consumo completos en el encabezado.
+- Captura privada fuera del repositorio; `git diff --check` limpio. Sin commit/push.
+
+### Ajuste posterior — ocultar consumo cero
+
+- [x] Omitir por completo las etiquetas en horas con consumo cero; mantener las etiquetas compactas positivas y la descripción accesible «sin uso».
+- [x] `testDebugUnitTest assembleRelease`: **161 pruebas, 0 fallos/errores; BUILD SUCCESSFUL**. Release actualizada en Fire con `adb install -r` y comprobación visual: solo las barras de 31 min y 46 min tienen etiquetas.
+
+### Ajuste posterior — heatmap horizontal
+
+- [x] Reorganizar análisis TV: gráfico arriba; heatmap a dos columnas/ancho completo en una fila; comparativas y totales mensuales en la última fila.
+- [x] Compactar etiquetas/celdas heatmap y resúmenes para el nuevo reparto sin retirar rangos, detalle ni accesibilidad.
+- [x] `testDebugUnitTest assembleRelease`: **161 pruebas, 0 fallos/errores; BUILD SUCCESSFUL**. Release instalada en Fire KFDOWI/API 22. Comprobación visual: disposición horizontal correcta con 8 y 26 semanas; comparativas y totales mensuales visibles en la última fila.
+- [ ] Completar comprobación visual del rango de 4 semanas y selección de una celda; la captura del rango de 26 semanas queda en `/private/var/folders/lm/ldxqrxyd4b73tgv90dsy28xh0000gn/T/opencode/tv-26-rotated.png`.
+- [x] Expandir el heatmap por el ancho y alto disponibles; distribuir las comparativas y los totales mensuales por la altura de sus tarjetas. Verificado en Fire KFDOWI/API 22 tras instalar la release.
+- [x] Dar más altura al gráfico horario, reservar una banda de meses legible sobre el heatmap, separar el número de día (esquina superior izquierda en gris) del consumo y reducir a la mitad la tercera fila. Release compilada, instalada y revisada visualmente en Fire KFDOWI/API 22; **161 pruebas aprobadas**.
+- [x] Aumentar la tipografía del consumo en heatmap y barras horarias y de los rótulos comparativos semanal/mensual, con ajuste por anchura de celda para rangos extensos. Release compilada e instalada en Fire; comprobación visual de tipografía ampliada.
+- [x] Aumentar el tamaño de las etiquetas horarias y reservar una franja sobre las barras para evitar que texto y barras se solapen. Release instalada y comprobada visualmente en Fire KFDOWI/API 22; **161 pruebas aprobadas**.
+- [x] Aumentar las etiquetas de consumo y los números de día del heatmap; abreviar el consumo de horas para celdas estrechas sin alterar el detalle accesible completo. Release compilada e instalada; comprobación visual en Fire KFDOWI/API 22; **161 pruebas aprobadas**.
+
 ## Otros pendientes
 
 La mejora posterior de zona horaria TV está especificada y verificada en [tv-weather-timezone](../tv-weather-timezone/TASKS.md): usa la ubicación meteorológica, recalcula sin alterar registros y conserva compatibilidad con preferencias/caché antiguas. Su ejecución de pruebas es posterior a los resultados de la limpieza registrados arriba.
